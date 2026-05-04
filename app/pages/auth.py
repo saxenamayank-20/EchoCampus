@@ -1,7 +1,7 @@
 import re, time
 import streamlit as st
 from database.models import login_user, register_student
-from config.settings import APP_TITLE, INSTITUTION, validate_password, generate_student_id
+from config.settings import APP_TITLE, validate_password, generate_student_id
 
 
 def _valid_email(email):
@@ -15,7 +15,6 @@ def render_login():
         <div style="text-align:center;padding:2rem 0 1.25rem;">
           <div style="font-size:3rem;">🎓</div>
           <h1 style="font-size:1.55rem;font-weight:700;margin:.4rem 0 .2rem;">{APP_TITLE}</h1>
-          <p style="font-size:.85rem;margin:0;opacity:.6;">{INSTITUTION}</p>
         </div>
         """, unsafe_allow_html=True)
 
