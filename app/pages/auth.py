@@ -21,7 +21,7 @@ def render_login():
 
         st.markdown("#### Sign In")
         with st.form("login_form"):
-            user_id  = st.text_input("User ID", placeholder="e.g. STU2024001 / GM001 / ADMIN001")
+            user_id  = st.text_input("User ID", placeholder="e.g. ST000101 / GM001 / ADMIN001")
             password = st.text_input("Password", type="password", placeholder="Your password")
             btn      = st.form_submit_button("🔐 Sign In", use_container_width=True, type="primary")
 
