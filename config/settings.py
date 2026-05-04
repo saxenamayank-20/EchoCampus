@@ -75,7 +75,6 @@ MANAGER_MEET_LINKS = {
 }
 
 APP_TITLE   = "College Complaint Portal"
-INSTITUTION = "GLA University — CDOE"
 
 # ─── STUDENT USER ID FORMAT ──────────────────────────────────────────────────
 # Student IDs will be auto-generated as ST000101, ST000102, etc.
