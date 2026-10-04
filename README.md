@@ -25,13 +25,16 @@ The portal supports the full complaint flow from submission to closure.
 
 ## Tech Stack
 
-- Python
-- Streamlit
-- SQLite
-- FastAPI (optional)
-- `bcrypt`
-- `pandas`
-- `python-dotenv`
+- Python 3.10+
+- Streamlit (UI)
+- SQLite via Python's built-in `sqlite3` module (raw SQL, single file `complaint_portal.db`)
+- FastAPI + Uvicorn (optional REST API, not used by the Streamlit UI)
+- `bcrypt` (password hashing)
+- `pandas` (tables in the dashboards)
+- `python-dotenv` (loads settings and seed passwords from `.env`)
+- `pytest` (tests)
+
+> An upgrade to FastAPI + PostgreSQL + React is planned; see [UPGRADE_PLAN.md](UPGRADE_PLAN.md).
 
 ## Current Project Structure
 
@@ -61,7 +64,11 @@ Complaint_Complaint_Portal/
 |   |-- __init__.py
 |   |-- connection.py
 |   `-- models.py
-`-- .env
+|-- scripts/
+|   `-- reset_seed_passwords.py
+|-- tests/
+|-- .env.example
+`-- .env              (your local copy, never committed)
 ```
 
 ## How The App Is Organized
@@ -77,8 +84,8 @@ This is the Streamlit entry point. It:
 
 ### `database/connection.py`
 
-This file handles the MySQL connection pool.  
-It is still needed because the rest of the app uses `get_connection()` from here.
+This file opens the SQLite connection (`complaint_portal.db` in the working directory) and returns rows as dictionaries.
+The rest of the app uses `get_connection()` from here.
 
 ### `database/models.py`
 
@@ -95,12 +102,11 @@ Despite the name, this file currently does more than just models. It contains:
 
 This file stores:
 
-- database config from environment variables
-- predefined admin and manager accounts
+- predefined admin and manager accounts (their seed passwords are read from `.env`)
 - category-to-manager mapping
 - complaint statuses
 - priority keyword rules
-- app title and institution name
+- password rules and the student ID generator
 
 ### `app/pages/`
 
@@ -126,6 +132,13 @@ cd College_Complaint_Portal
 
 ### 2. Create and activate a virtual environment
 
+Linux / macOS:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
 Windows PowerShell:
 
 ```powershell
@@ -139,7 +152,23 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-### 4. Run the App
+### 4. Configure `.env`
+
+```bash
+cp .env.example .env
+```
+
+Set strong, unique values for `ADMIN_SEED_PASSWORD` and `GM001_PASSWORD` … `GM004_PASSWORD`.
+These are used to create the admin and grievance manager accounts on first run. An account whose
+password is empty is skipped. No passwords are stored in the code.
+
+If the database already exists and you change these values, apply them with:
+
+```bash
+python scripts/reset_seed_passwords.py
+```
+
+### 5. Run the App
 
 The SQLite database file (`complaint_portal.db`) will be created automatically on first run.
 
@@ -147,7 +176,13 @@ The SQLite database file (`complaint_portal.db`) will be created automatically o
 streamlit run main.py
 ```
 
-No additional database configuration needed!
+No additional database configuration is needed.
+
+### 6. Run the tests
+
+```bash
+pytest
+```
 
 ## Running The Project
 
@@ -209,10 +244,7 @@ API docs:
 
 If you continue improving this project later, a good next cleanup would be:
 
-- rename `database/models.py` to something like `database/service.py`
-- add a real `.env.example` file
-- separate raw SQL logic from schema/model definitions
-- add tests
+See [UPGRADE_PLAN.md](UPGRADE_PLAN.md) for the staged upgrade (PostgreSQL, FastAPI with JWT auth, React frontend, AI features).
 
 ## License
 
