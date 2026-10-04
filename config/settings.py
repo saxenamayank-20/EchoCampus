@@ -10,14 +10,15 @@ except Exception:
     st = None
 
 
-# ─── USER PASSWORDS (Hardcoded for simplicity) ───────────────────────────────
-# These are used for Admin and Grievance Managers
+# ─── SEED PASSWORDS (from .env, never hardcoded) ─────────────────────────────
+# Used only to create/update the Admin and Grievance Manager accounts.
+# If a variable is missing, that account is not seeded (see database/models.py).
 
-ADMIN_SEED_PASSWORD = "Admin@2026#Secure"
-GM001_PASSWORD = "RajeshKumar@2026#Secure"
-GM002_PASSWORD = "PriyaSharma@2026#Secure"
-GM003_PASSWORD = "AnilVerma@2026#Secure"
-GM004_PASSWORD = "SunitaRao@2026#Secure"
+ADMIN_SEED_PASSWORD = os.getenv("ADMIN_SEED_PASSWORD", "")
+GM001_PASSWORD = os.getenv("GM001_PASSWORD", "")
+GM002_PASSWORD = os.getenv("GM002_PASSWORD", "")
+GM003_PASSWORD = os.getenv("GM003_PASSWORD", "")
+GM004_PASSWORD = os.getenv("GM004_PASSWORD", "")
 
 # ─── PREDEFINED USERS (Admin + 4 Grievance Managers) ─────────────────────────
 # Format: (user_id, full_name, email, password, role, department, category)
