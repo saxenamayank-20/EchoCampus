@@ -22,3 +22,6 @@ htmlcov/
 *.log
 *.db
 *.sqlite3
+
+# User uploads (attachments, policy PDFs)
+uploads/
