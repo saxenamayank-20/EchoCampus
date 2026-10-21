@@ -2,15 +2,37 @@
 
 ## 0. Read this first: rules for the agent
 
-1. **Work one stage at a time.** Finish a stage, make sure the app runs, run the tests, then STOP and summarize what changed, what to test manually, and what the owner must provide next. Do not start the next stage until the owner says so.
-2. **Do not remove existing features.** Everything the portal does today must still work after every stage (see Section 2).
+1. **Work one step at a time.** Finish a step, make sure the app runs, run the tests, then STOP and summarize what changed, what to test manually, and what the owner must provide next. Do not start the next step until the owner says so.
+2. **Do not remove existing features.** Everything the portal does today must still work after every step (see Section 2).
 3. **Never commit secrets.** All keys, passwords and URLs go in `.env`. Keep `.env.example` updated with placeholder values.
 4. **Ask before changing scope.** If something in this plan seems wrong or impossible, explain why and propose an alternative instead of silently doing something else.
 5. **Verify library APIs and model names against official docs** (LangGraph, google-genai, SQLAlchemy 2.x, pgvector). Do not guess model names or function signatures.
 6. Write clean, typed Python (type hints, docstrings on public functions). Small commits with clear messages, one per logical change.
-7. Every stage ends with tests passing (`pytest`).
+7. Every step ends with tests passing (`pytest`).
 8. **Free tools only.** Everything must run on free tiers or open-source libraries. Do not add any service that needs payment or a credit card. If something would need payment, stop and ask.
 9. **Respect free-tier API limits.** LLM and embedding calls must be throttled, retried with backoff on 429 errors, and never fired in big parallel bursts.
+
+10. **The plan is organized by Phases 1–6, each split into Steps.** Do one step at a time, stop after each step, and always say which phase/step you are on.
+11. Follow AGENTS.md in the repo root (git, comments, README, secrets rules). It wins on *how* things are done; this plan decides *what* gets built.
+12. Never create deployment files (Dockerfile, docker-compose, CI workflows, hosting configs) before Phase 6.
+
+## 0b. Learning mode (this is a college project, the owner must understand everything)
+The owner has to explain every part in a viva, so teaching is part of the job. For every step:
+
+1. **Before coding:** explain in simple words what this step builds, why it's needed, and the plan (which files will change). Wait for the owner's go-ahead.
+2. **While coding:** go file by file. For each change, show the code (or a clear diff) and explain:
+   - **what** changed
+   - **how** it works
+   - **why** it's done this way, plus the simpler alternative if there is one
+
+   Keep explanations short and plain. No jargon without a one-line meaning.
+3. **After each step:** add a section to `notes/phase-<n>.md` (one notes file per phase). The `notes/` folder must be in `.gitignore`, so it is never committed. It contains:
+   - what we built, in 3–5 lines
+   - key concepts learned (each explained in 2–3 lines with a tiny example)
+   - files changed and their role
+   - problems hit and how they were fixed
+   - 5–8 likely viva questions with short answers
+4. Then stop and wait. The owner may ask questions before moving on; answer them before starting the next step.
 
 ---
 
@@ -25,8 +47,8 @@
   - Phase 5: LangGraph agents + deployment
 - Repo: https://github.com/saxenamayank-20/College_Complaint_Portal
 - The project must be demo-able in a viva: clear architecture, working features, sensible seed data.
-- The owner wants a modern, polished UI. Streamlit is being replaced by a React frontend (Stage 4).
-- Deployment (Stage 9) is deferred until Stages 0–8 are done.
+- The owner wants a modern, polished UI. Streamlit is being replaced by a React frontend (Phase 2).
+- Deployment (Phase 6) is deferred until Phases 1–5 are done.
 
 ---
 
@@ -112,9 +134,9 @@ backend/
     jobs/scheduler.py       # APScheduler: SLA check, weekly insights
   alembic/
   tests/
-frontend/                   # React + Vite + TypeScript + Tailwind + shadcn/ui
+frontend/                   # React + Vite (JavaScript, .jsx) + Tailwind CSS
   src/
-    api/                    # typed API client (axios/fetch), attaches JWT, handles 401
+    api/                    # API client (axios/fetch), attaches JWT, handles 401
     auth/                   # auth context, protected routes, role guards
     pages/                  # login, register, verify-otp, student/, manager/, admin/
     components/             # shared UI: status/priority badges, timeline, tables, charts
@@ -123,12 +145,19 @@ scripts/
   seed_demo_data.py         # ~60 realistic complaints incl. near-duplicates, for demo
 docker-compose.yml
 .env.example
-(Dockerfile/docker-compose/CI come in Stage 9, deferred)
+(Dockerfile/docker-compose/CI come in Phase 6, deferred)
 ```
 
 ---
 
-## 4. Data model (PostgreSQL)
+## 4. Data model (final shape, PostgreSQL)
+Tables are created in the phase that needs them, not all at once:
+- Phase 1 (on local SQLite): users, manager_categories, complaints, complaint_history, manager_updates.
+- Phase 2: email_otps, attachments.
+- Phase 3: move everything to Neon PostgreSQL with Alembic; add closure_confirmations, notifications, SLA fields.
+- Phase 4: embedding columns, complaint_supporters, policy_documents, policy_chunks, llm_calls.
+- Phase 5: insight_reports.
+
 
 Use enums for role, status, priority. Use foreign keys and indexes.
 
@@ -158,27 +187,28 @@ Student/manager names and emails are fetched via joins, not copied into `complai
 
 ---
 
-## 5. Stages (do in order, stop after each)
+## 5. Phases (do in order, one step at a time)
 
-### Stage 0 — Security & hygiene
+# Phase 1 — Python / OOP foundation
+
+### Step 1.1 — Security & hygiene
 - Move all seed passwords to `.env` (`ADMIN_SEED_PASSWORD`, `GM001_PASSWORD`…). Remove them from code. Add `.env.example`.
-- Make sure `.gitignore` covers `.env`, `*.db`, `__pycache__`, uploads.
+- Make sure `.gitignore` covers `.env`, `.venv`, `*.db`, `__pycache__`, `uploads/`, `node_modules/` and `notes/`.
 - Tell the owner the old passwords were public and must be changed.
 - Fix the README tech stack.
 
 **Done when:** no secrets in tracked files; the app still runs.
 
-### Stage 1 — Data layer: Neon + SQLAlchemy + Alembic (roadmap Phase 3)
-- Create the folder structure above (backend/frontend split).
-- SQLAlchemy 2.x models for Section 4. pgvector columns can be added now or in Stage 6, but via a migration.
-- Alembic initial migration. Enable the `vector` extension in a migration.
-- `DATABASE_URL` from `.env` (Neon connection string, `sslmode=require`).
-- Seed script: admin, 4 managers, manager_categories.
-- Student ID generation done safely in Postgres (sequence or a locked query, not "max + 1" race-prone logic).
+### Step 1.2 — New backend structure + SQLAlchemy models (local SQLite for now)
+- Create the `backend/` part of the folder structure (Section 3). The `frontend/` folder comes in Phase 2.
+- `core/config.py` with pydantic-settings. `DATABASE_URL` defaults to a local SQLite file (`sqlite:///./echocampus.db`), so switching to Postgres in Phase 3 is only a URL change.
+- SQLAlchemy 2.x models for the Phase 1 tables (see Section 4), as Python classes. Use `create_all` for now; Alembic comes in Phase 3.
+- Seed script: admin, 4 managers, manager_categories (passwords from `.env`).
+- Keep ticket ID and student ID formats the same as today.
 
-**Done when:** `alembic upgrade head` works against Neon and the seed runs.
+**Done when:** tables are created from the models and the seed runs.
 
-### Stage 2 — OOP services, status machine, tests (roadmap Phase 1)
+### Step 1.3 — OOP services, status machine, tests
 - Repositories (DB only) and services (rules) for users and complaints.
 - Enums for Role, Status, Priority.
 - `StatusMachine` with allowed transitions:
@@ -188,12 +218,15 @@ Student/manager names and emails are fetched via joins, not copied into `complai
   - Resolved → Closed (admin only, after close request)
   - Pending → Assigned (system)
 - Invalid transitions raise a domain error. Every transition writes `complaint_history`.
-- Keep the keyword priority logic as `KeywordPriorityDetector` (still used in Stage 6 as the safety floor).
-- pytest: routing by category, keyword priority, every allowed and disallowed transition, ticket ID format. Use a test database (separate Neon branch or a local Postgres in Docker).
+- Keep the keyword priority logic as `KeywordPriorityDetector` (still used in Phase 4 as the safety floor).
+- pytest: routing by category, keyword priority, every allowed and disallowed transition, ticket ID format. Tests use a temporary SQLite database.
+- Point the existing Streamlit pages at the new service layer, so the app keeps working until Phase 2 replaces the UI. Then delete the old `database/models.py`, after telling the owner.
 
-**Done when:** tests pass; the business logic has no Streamlit/FastAPI imports.
+**Done when:** tests pass, the business logic has no Streamlit/FastAPI imports, and the Streamlit app works on the new services.
 
-### Stage 3 — FastAPI backend + auth (roadmap Phase 2)
+# Phase 2 — FastAPI backend + React frontend
+
+### Step 2.1 — FastAPI backend + auth
 - Routers: auth, complaints (student), manager, admin. Pydantic schemas for every request/response.
 - **JWT auth:**
   - Login returns an access token (about 30 min) containing `sub` (user_id), `role`, `exp`. Use PyJWT. Secret in `.env` (`JWT_SECRET`).
@@ -217,8 +250,22 @@ Student/manager names and emails are fetched via joins, not copied into `complai
 
 **Done when:** all features from Section 2 are available through the API with auth; Swagger docs at `/docs` work.
 
-### Stage 4 — Modern React frontend (replaces Streamlit)
-- **Stack:** React + Vite + TypeScript + Tailwind CSS + shadcn/ui components, React Router, TanStack Query for API data, Recharts for admin charts, lucide-react icons. All free/open source.
+### Step 2.2 — Proof attachments (backend)
+- **Proof attachments (core feature):**
+  - Students can attach proof when submitting, and add more later on their ticket.
+  - Managers can also attach files in their updates.
+  - **Allowed:** images/screenshots (jpg, jpeg, png, webp), PDF, Word (docx).
+  - **Limits:** max 5 MB per file and max 5 files per complaint (configurable).
+  - **Validation:** check the real file type from its content (magic bytes), not just the extension. Reject everything else, especially executables and archives.
+  - **Storage:** save under a random generated name, never the user's filename. Keep the original name only in the DB for display. Store in a local `uploads/` folder for now; cloud storage is decided at deployment time.
+  - **Access control:** files are NOT public. They are served only through an authenticated endpoint, and only the owning student, the assigned manager and the admin can view or download them.
+  - **Tests:** wrong type rejected, oversize rejected, other students get 403.
+
+**Done when:** upload, list and download endpoints work with access control, and the tests pass.
+
+### Step 2.3 — Modern React frontend (replaces Streamlit)
+- **Stack (fixed by the owner):** React + Vite + Tailwind CSS, in plain JavaScript (.jsx files). **Do NOT use TypeScript anywhere in the frontend.**
+- **Supporting libraries:** React Router, TanStack Query for API data, Recharts for admin charts, lucide-react icons. shadcn/ui components are allowed only in their JavaScript form (`tsx: false`). All free/open source.
 - **Look and feel:** clean, modern SaaS-style dashboard:
   - Sidebar navigation per role, light/dark mode, responsive for mobile.
   - Status/priority badges, toast notifications, loading skeletons, empty states.
@@ -228,20 +275,32 @@ Student/manager names and emails are fetched via joins, not copied into `complai
   - JWT kept in memory + sessionStorage. On 401, redirect to login.
   - Route guards per role.
 - **Student pages:**
-  - New complaint form with a live AI suggestion panel (added in Stage 6).
+  - New complaint form with drag-and-drop proof upload (progress, image thumbnails, PDF/DOCX file chips, inline preview for images and PDFs). The live AI suggestion panel is added in Phase 4.
   - My tickets (table + filters), ticket detail with timeline.
-  - Policy assistant chat (added in Stage 7).
-- **Manager pages:** active/resolved queues with filters, ticket detail (status update, remarks, updates to admin, close request, reply suggestion panel added in Stage 7).
+  - Policy assistant chat (added in Phase 4).
+- **Manager pages:** active/resolved queues with filters, ticket detail (status update, remarks, updates to admin, close request, reply suggestion panel added in Phase 4).
 - **Admin pages:**
   - Overview with charts (complaints by category/status/priority, trend over time, SLA breaches).
-  - All complaints, users, manager updates, close-request approvals, policy document upload, weekly insights (Stage 8).
+  - All complaints, users, manager updates, close-request approvals, policy document upload, weekly insights (Phase 5).
 - Use the existing Streamlit pages as the feature reference, then delete Streamlit once every feature is covered and the owner confirms.
 - Backend CORS allows `FRONTEND_ORIGIN` (Vite dev server, http://localhost:5173).
 - The README explains `npm install` / `npm run dev`.
 
 **Done when:** the full student → manager → admin flow works end-to-end in the React app through the API, and Streamlit is removed.
 
-### Stage 5 — Redis, SLA escalation, attachments (roadmap Phase 3)
+# Phase 3 — PostgreSQL (Neon) + Redis
+
+### Step 3.1 — Move to Neon PostgreSQL + Alembic
+- Switch `DATABASE_URL` to the Neon connection string (`sslmode=require`).
+- Set up Alembic; create the initial migration from the current models. From now on, every schema change is a migration.
+- Enable the `vector` extension in a migration (used in Phase 4).
+- Use Postgres enums, foreign keys and the indexes from Section 4.
+- Student ID generation done safely in Postgres (a sequence, not race-prone "max + 1").
+- Re-run the seed on Neon. Tests run against a separate Neon branch (or keep SQLite for unit tests and add a few Postgres integration tests).
+
+**Done when:** `alembic upgrade head` works on Neon, the app runs on Neon, and the tests pass.
+
+### Step 3.2 — Redis + SLA escalation
 - **Redis** (`REDIS_URL`, Upstash compatible) behind a small cache interface. If `REDIS_URL` is empty, use an in-memory/no-op fallback so the app still runs.
   - Cache admin stats (60 s TTL; invalidate on complaint changes).
   - Rate limit: complaint submission per student (default 5/hour) and login attempts per IP. Return 429 when exceeded.
@@ -249,20 +308,10 @@ Student/manager names and emails are fetched via joins, not copied into `complai
   - `sla_due_at` set at submission from priority. Hours are configurable in `.env`; defaults: Critical 4, High 48, Medium 72, Low 168.
   - An APScheduler job (every 15 min) plus an admin endpoint to trigger it manually marks overdue complaints `escalated`, writes history, and notifies the admin.
   - Admin dashboard shows the overdue list.
-- **Proof attachments (core feature):**
-  - Students can attach proof when submitting, and add more later on their ticket.
-  - Managers can also attach files in their updates.
-  - **Allowed:** images/screenshots (jpg, jpeg, png, webp), PDF, Word (docx).
-  - **Limits:** max 5 MB per file and max 5 files per complaint (configurable).
-  - **Validation:** check the real file type from its content (magic bytes), not just the extension. Reject everything else, especially executables and archives.
-  - **Storage:** save under a random generated name, never the user's filename. Keep the original name only in the DB for display. Store in a local `uploads/` folder for now; cloud storage is decided at deployment time.
-  - **Access control:** files are NOT public. They are served only through an authenticated endpoint, and only the owning student, the assigned manager and the admin can view or download them.
-  - **Frontend:** drag-and-drop upload with progress, image thumbnails, PDF/DOCX shown as file chips, inline preview for images and PDFs.
-  - **Tests:** wrong type rejected, oversize rejected, other students get 403.
 
 **Done when:** stats are cached, rate limits return 429, and overdue complaints get escalated in a test.
 
-### Stage 5b — Student confirmation loop before closing
+### Step 3.3 — Student confirmation loop before closing
 When a manager requests closure, the student who raised the complaint must confirm it was really fixed before the admin can close it.
 
 - **Flow:**
@@ -285,7 +334,9 @@ When a manager requests closure, the student who raised the complaint must confi
 
 **Done when:** a full round (manager request → student dispute → manager fixes → student confirms → admin closes) works end-to-end and shows correctly in the timeline.
 
-### Stage 6 — AI triage + duplicate detection (roadmap Phase 4)
+# Phase 4 — AI: RAG + pgvector
+
+### Step 4.1 — AI triage + duplicate detection
 - **`ai/llm_client.py`:**
   - Provider abstraction; default Gemini via the official `google-genai` SDK.
   - Model names from `.env` (`LLM_MODEL`, `EMBEDDING_MODEL`, `EMBEDDING_DIM`). Verify current model names in the docs.
@@ -314,7 +365,7 @@ When a manager requests closure, the student who raised the complaint must confi
 
 **Done when:** submissions get AI triage with a working fallback, and duplicates show up in the demo.
 
-### Stage 7 — Policy assistant (RAG) + reply suggestions (roadmap Phase 4)
+### Step 4.2 — Policy assistant (RAG) + reply suggestions
 - **Admin uploads policy PDFs** (`pypdf`):
   - Chunk about 500–800 tokens with overlap. Keep the page number.
   - Embed and store in `policy_chunks`.
@@ -333,13 +384,15 @@ When a manager requests closure, the student who raised the complaint must confi
 
 **Done when:** policy Q&A answers with citations, refuses when the answer isn't in the docs, and reply drafts appear for managers.
 
-### Stage 8 — LangGraph agents (roadmap Phase 5)
+# Phase 5 — LangGraph agents (bonus; not in the approved title, so keep it optional)
+
+### Step 5.1 — Intake graph, closure graph, weekly insights
 - **Intake graph** (`agents/intake_graph.py`): rewrite the submission pipeline as a LangGraph `StateGraph`.
-  - Nodes: `classify` (Stage 6 triage) → `check_duplicates` → conditional edge: Critical → `escalate` (meet link + admin alert) → `route` (assign manager, set SLA) → `notify`.
+  - Nodes: `classify` (Phase 4 triage) → `check_duplicates` → conditional edge: Critical → `escalate` (meet link + admin alert) → `route` (assign manager, set SLA) → `notify`.
   - State is a typed dict holding the complaint data and each node's result.
   - Errors in AI nodes fall back to the non-AI path (never block a submission).
   - The existing submit endpoint calls the graph.
-- **Human-in-the-loop closure:** move the Stage 5b closure flow into a LangGraph graph with two pause points: `await_student_confirmation` (resumed by the student's answer or the auto-confirm deadline), then `await_admin_approval` (resumed by the admin). A dispute routes back to the manager. Business rules stay the same as Stage 5b. Use a Postgres checkpointer if available; verify in the LangGraph docs.
+- **Human-in-the-loop closure:** move the Step 3.3 closure flow into a LangGraph graph with two pause points: `await_student_confirmation` (resumed by the student's answer or the auto-confirm deadline), then `await_admin_approval` (resumed by the admin). A dispute routes back to the manager. Business rules stay the same as Step 3.3. Use a Postgres checkpointer if available; verify in the LangGraph docs.
 - **Weekly insights** (`agents/insights.py`):
   - A scheduled job (and a manual admin button) gathers last week's stats via SQL: counts by category, week-over-week change, SLA breaches, top duplicate clusters.
   - The LLM writes a short report (max ~8 lines) using ONLY those numbers. Stored in `insight_reports` and shown on the admin dashboard.
@@ -347,10 +400,18 @@ When a manager requests closure, the student who raised the complaint must confi
 
 **Done when:** submissions run through the graph, closure approval pauses/resumes, and the admin sees the weekly report.
 
-### Stage 9 — Deployment (DEFERRED: do NOT start until the owner asks)
-Planned for later, after Stages 0–8 are done: Docker + docker-compose, GitHub Actions CI (ruff + pytest), free hosting for the backend and the React frontend, cloud storage for attachments, and an admin "AI usage" page built from `llm_calls`.
+# Phase 6 — Deployment (DEFERRED: do NOT start until the owner asks)
+Planned for later, after Phases 1–5 are done (all free tiers):
+- Docker + docker-compose.
+- GitHub Actions CI (ruff + pytest).
+- Render for the FastAPI backend (free tier sleeps when idle; add a `/health` endpoint).
+- Vercel for the React frontend.
+- Cloudinary (free) for attachment storage, because Render's free disk is not persistent.
+- An admin "AI usage" page built from `llm_calls`.
 
-The `llm_calls` logging itself is already built in Stage 6.
+No AWS or any service that needs a credit card.
+
+The `llm_calls` logging itself is already built in Phase 4.
 
 ---
 
@@ -397,13 +458,14 @@ CRISIS_HELPLINE=Tele-MANAS 14416
 
 ## 7. Roadmap coverage (for the project report)
 
-| Roadmap phase | Covered by |
+| Phase | What it covers |
 |---|---|
-| Phase 1: Python / OOP | Stage 2: services, repositories, enums, status machine, pytest |
-| Phase 2: FastAPI | Stage 3–4: full REST API, JWT, role-based access, OTP email verification, background tasks, React frontend consuming the API |
-| Phase 3: PostgreSQL / Redis | Stage 1, 5, 5b: Neon + SQLAlchemy + Alembic, indexes, SLA escalation, Redis cache + rate limiting, student confirmation loop + manager quality metrics |
-| Phase 4: RAG / pgvector | Stage 6–7: AI triage with safety floor, embedding-based duplicate detection, policy RAG with citations, reply suggestions |
-| Phase 5: Agents / deployment | Stage 8: LangGraph intake graph, human-in-the-loop closure, insights agent. Stage 9 (deployment) later |
+| Phase 1: Python / OOP | Security cleanup, new backend structure, SQLAlchemy models, services/repositories, enums, status machine, pytest |
+| Phase 2: FastAPI | REST API, JWT, role-based access, OTP email verification, proof attachments, React frontend consuming the API |
+| Phase 3: PostgreSQL / Redis | Neon + Alembic migrations, indexes, Redis cache + rate limiting, SLA escalation, student confirmation loop, notifications, manager quality metrics |
+| Phase 4: RAG / pgvector | AI triage with safety floor, embedding-based duplicate detection, policy RAG with citations, reply suggestions |
+| Phase 5: Agents (bonus) | LangGraph intake graph, human-in-the-loop closure, weekly insights |
+| Phase 6: Deployment (later) | Docker, GitHub Actions, Render, Vercel |
 
 ---
 

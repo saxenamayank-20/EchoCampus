@@ -56,6 +56,9 @@ def _hash(pw): return bcrypt.hashpw(pw.encode(), bcrypt.gensalt()).decode()
 def _seed_users(conn):
     c = conn.cursor()
     for u in PREDEFINED_USERS:
+        if not u[3]:
+            print(f"[SEED] Skipping {u[0]}: no seed password set in .env")
+            continue
         c.execute("SELECT 1 FROM users WHERE user_id=?", (u[0],))
         if not c.fetchone():
             try:
@@ -77,6 +80,9 @@ def update_predefined_user_passwords():
     try:
         for u in PREDEFINED_USERS:
             user_id, name, email, password, role, department, category = u
+            if not password:
+                print(f"[UPDATE] Skipping {user_id}: no seed password set in .env")
+                continue
             # Update password for existing user
             c.execute("UPDATE users SET password=? WHERE user_id=? AND role != 'student'",
                       (_hash(password), user_id))

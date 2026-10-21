@@ -22,3 +22,12 @@ htmlcov/
 *.log
 *.db
 *.sqlite3
+
+# User uploads (attachments, policy PDFs)
+uploads/
+
+# my local learning notes
+notes/
+
+# frontend packages (phase 2)
+node_modules/
