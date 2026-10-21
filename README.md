@@ -34,8 +34,6 @@ The portal supports the full complaint flow from submission to closure.
 - `python-dotenv` (loads settings and seed passwords from `.env`)
 - `pytest` (tests)
 
-> An upgrade to FastAPI + PostgreSQL + React is planned; see [UPGRADE_PLAN.md](UPGRADE_PLAN.md).
-
 ## Current Project Structure
 
 ```text
@@ -67,7 +65,6 @@ Complaint_Complaint_Portal/
 |-- scripts/
 |   `-- reset_seed_passwords.py
 |-- tests/
-|-- .env.example
 `-- .env              (your local copy, never committed)
 ```
 
@@ -154,8 +151,14 @@ pip install -r requirements.txt
 
 ### 4. Configure `.env`
 
-```bash
-cp .env.example .env
+Create a file named `.env` in the project folder with these variables:
+
+```
+ADMIN_SEED_PASSWORD=
+GM001_PASSWORD=
+GM002_PASSWORD=
+GM003_PASSWORD=
+GM004_PASSWORD=
 ```
 
 Set strong, unique values for `ADMIN_SEED_PASSWORD` and `GM001_PASSWORD` … `GM004_PASSWORD`.
@@ -242,9 +245,7 @@ API docs:
 
 ## Possible Future Cleanup
 
-If you continue improving this project later, a good next cleanup would be:
-
-See [UPGRADE_PLAN.md](UPGRADE_PLAN.md) for the staged upgrade (PostgreSQL, FastAPI with JWT auth, React frontend, AI features).
+Next I'm moving it to a FastAPI backend with JWT auth, PostgreSQL and a React frontend, then adding AI features.
 
 ## License
 

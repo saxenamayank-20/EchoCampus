@@ -1,6 +1,5 @@
 .env
 .env.*
-!.env.example
 
 .venv/
 venv/
@@ -31,3 +30,7 @@ notes/
 
 # frontend packages (phase 2)
 node_modules/
+
+# local planning files, kept off github
+UPGRADE_PLAN.md
+AGENTS.md
