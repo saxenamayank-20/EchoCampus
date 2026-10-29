@@ -1,7 +1,12 @@
+import os
 import re
 
-import bcrypt
-import pytest
+# tests must never touch the real db from .env (env vars beat .env), set before the app is imported
+os.environ["DATABASE_URL"] = "sqlite://"
+os.environ["SMTP_HOST"] = ""
+
+import bcrypt  # noqa: E402
+import pytest  # noqa: E402
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session, sessionmaker
 

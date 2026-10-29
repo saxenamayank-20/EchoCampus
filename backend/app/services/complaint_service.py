@@ -1,6 +1,6 @@
 import random
 import string
-from collections import Counter, defaultdict
+from collections import Counter
 from datetime import timedelta
 
 from sqlalchemy.orm import Session
@@ -129,9 +129,6 @@ class ComplaintService:
         return complaint
 
     # ── reading ───────────────────────────────────────────────────────────────
-    def get(self, ticket_id: str) -> Complaint:
-        return self._get(ticket_id)
-
     def get_for(self, viewer: User, ticket_id: str) -> Complaint:
         """students see their own, managers the ones assigned to them, admin sees all"""
         complaint = self._get(ticket_id)
@@ -147,27 +144,6 @@ class ComplaintService:
         elif viewer.role == Role.MANAGER:
             filters.assigned_to = viewer.id
         return self.complaints.search(filters, page, page_size)
-
-    def for_student(self, student: User) -> list[Complaint]:
-        return self.complaints.list_for_student(student.id)
-
-    def for_manager(self, manager: User, resolved: bool = False) -> list[Complaint]:
-        return self.complaints.list_for_manager(manager.id, resolved)
-
-    def all(self) -> list[Complaint]:
-        return self.complaints.list_all()
-
-    def open_by_category(self) -> dict[str, list[Complaint]]:
-        grouped = defaultdict(list)
-        for complaint in self.complaints.list_not_closed():
-            grouped[complaint.category].append(complaint)
-        return dict(grouped)
-
-    def resolved_or_close_requested(self) -> list[Complaint]:
-        return self.complaints.list_resolved_or_close_requested()
-
-    def timeline(self, ticket_id: str) -> list[ComplaintHistory]:
-        return self._get(ticket_id).history
 
     def manager_updates(self) -> list[ManagerUpdate]:
         return self.complaints.list_manager_updates()

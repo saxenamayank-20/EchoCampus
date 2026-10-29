@@ -41,33 +41,6 @@ class ComplaintRepository:
     def ticket_exists(self, ticket_id: str) -> bool:
         return self.get_by_ticket(ticket_id) is not None
 
-    def list_for_student(self, student_pk: int) -> list[Complaint]:
-        return list(self.db.scalars(
-            select(Complaint).where(Complaint.student_id == student_pk)
-            .order_by(Complaint.created_at.desc())))
-
-    def list_for_manager(self, manager_pk: int, resolved: bool) -> list[Complaint]:
-        query = select(Complaint).where(Complaint.assigned_to == manager_pk)
-        if resolved:
-            query = query.where(Complaint.status.in_(DONE)).order_by(Complaint.updated_at.desc())
-        else:
-            query = query.where(Complaint.status.not_in(DONE)).order_by(Complaint.created_at.desc())
-        return list(self.db.scalars(query))
-
-    def list_all(self) -> list[Complaint]:
-        return list(self.db.scalars(select(Complaint).order_by(Complaint.created_at.desc())))
-
-    def list_not_closed(self) -> list[Complaint]:
-        return list(self.db.scalars(
-            select(Complaint).where(Complaint.status != Status.CLOSED)
-            .order_by(Complaint.created_at.desc())))
-
-    def list_resolved_or_close_requested(self) -> list[Complaint]:
-        return list(self.db.scalars(
-            select(Complaint)
-            .where(Complaint.status.in_(DONE) | Complaint.close_requested.is_(True))
-            .order_by(Complaint.updated_at.desc())))
-
     def search(self, f: ComplaintFilters, page: int, page_size: int) -> tuple[list[Complaint], int]:
         """one page of complaints + the total count, newest first"""
         conditions = []
