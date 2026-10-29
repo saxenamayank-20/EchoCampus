@@ -12,10 +12,10 @@ from backend.app.models import ManagerCategory, User
 from backend.tests.conftest import STAFF_IDS, TEST_PASSWORD
 
 
-def test_all_phase1_tables_are_created(db):
+def test_all_tables_are_created(db):
     tables = set(inspect(db.get_bind()).get_table_names())
-    assert tables == {"users", "manager_categories", "complaints",
-                      "complaint_history", "manager_updates"}
+    assert {"users", "manager_categories", "complaints", "complaint_history",
+            "manager_updates", "email_otps"} <= tables
 
 
 def test_seed_creates_staff_and_categories(seeded_db):

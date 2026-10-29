@@ -20,3 +20,11 @@ class PermissionDeniedError(DomainError):
 
 class InvalidTransitionError(DomainError):
     """status change that the status machine doesn't allow"""
+
+
+class AuthenticationError(DomainError):
+    """wrong user id or password"""
+
+
+class NotVerifiedError(DomainError):
+    """right password, but the email isn't verified yet"""

@@ -1,6 +1,7 @@
 import random
 import string
-from collections import defaultdict
+from collections import Counter, defaultdict
+from datetime import timedelta
 
 from sqlalchemy.orm import Session
 
@@ -8,7 +9,7 @@ from backend.app.core.constants import CATEGORIES, MANAGER_MEET_LINKS
 from backend.app.core.enums import Priority, Role, Status
 from backend.app.db.base import now
 from backend.app.models import Complaint, ComplaintHistory, ManagerUpdate, User
-from backend.app.repositories.complaint_repository import ComplaintRepository
+from backend.app.repositories.complaint_repository import ComplaintFilters, ComplaintRepository
 from backend.app.repositories.user_repository import UserRepository
 from backend.app.services.errors import (DomainError, InvalidInputError, InvalidTransitionError,
                                          NotFoundError, PermissionDeniedError)
@@ -131,6 +132,22 @@ class ComplaintService:
     def get(self, ticket_id: str) -> Complaint:
         return self._get(ticket_id)
 
+    def get_for(self, viewer: User, ticket_id: str) -> Complaint:
+        """students see their own, managers the ones assigned to them, admin sees all"""
+        complaint = self._get(ticket_id)
+        if self._can_view(viewer, complaint):
+            return complaint
+        raise PermissionDeniedError("You can't view this complaint.")
+
+    def search(self, viewer: User, filters: ComplaintFilters, page: int = 1,
+               page_size: int = 20) -> tuple[list[Complaint], int]:
+        # the role decides the scope, whatever filters were sent
+        if viewer.role == Role.STUDENT:
+            filters.student_pk = viewer.id
+        elif viewer.role == Role.MANAGER:
+            filters.assigned_to = viewer.id
+        return self.complaints.search(filters, page, page_size)
+
     def for_student(self, student: User) -> list[Complaint]:
         return self.complaints.list_for_student(student.id)
 
@@ -166,7 +183,29 @@ class ComplaintService:
         stats["OpenCritical"] = self.complaints.count_open_critical()
         return stats
 
+    def chart_stats(self, days: int = 30) -> dict:
+        """numbers for the admin charts"""
+        since = (now() - timedelta(days=days - 1)).replace(hour=0, minute=0, second=0, microsecond=0)
+        per_day = Counter(created.date().isoformat() for created in self.complaints.created_since(since))
+        trend = [{"date": (since + timedelta(days=i)).date().isoformat(),
+                  "count": per_day.get((since + timedelta(days=i)).date().isoformat(), 0)}
+                 for i in range(days)]
+        return {
+            "by_status": self.complaints.count_by(Complaint.status),
+            "by_category": self.complaints.count_by(Complaint.category),
+            "by_priority": self.complaints.count_by(Complaint.priority),
+            "trend": trend,
+        }
+
     # ── helpers ───────────────────────────────────────────────────────────────
+    @staticmethod
+    def _can_view(viewer: User, complaint: Complaint) -> bool:
+        if viewer.role == Role.ADMIN:
+            return True
+        if viewer.role == Role.STUDENT:
+            return complaint.student_id == viewer.id
+        return viewer.role == Role.MANAGER and complaint.assigned_to == viewer.id
+
     def _get(self, ticket_id: str) -> Complaint:
         complaint = self.complaints.get_by_ticket(ticket_id)
         if not complaint:
