@@ -31,10 +31,12 @@ def list_complaints(
     date_from: date | None = None,
     date_to: date | None = None,
     q: str | None = None,
+    close_requested: bool | None = None,
 ):
     """students get their own, managers their assigned ones, admin gets everything"""
     filters = ComplaintFilters(statuses=status_, category=category, priority=priority,
-                               date_from=date_from, date_to=date_to, search=q)
+                               date_from=date_from, date_to=date_to, search=q,
+                               close_requested=close_requested)
     items, total = ComplaintService(db).search(user, filters, page, page_size)
     return Page(items=[ComplaintOut.of(c) for c in items], total=total, page=page, page_size=page_size)
 

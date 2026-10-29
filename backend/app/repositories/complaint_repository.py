@@ -21,6 +21,7 @@ class ComplaintFilters:
     date_from: date | None = None
     date_to: date | None = None
     search: str | None = None    # matches ticket id or title
+    close_requested: bool | None = None
 
 
 class ComplaintRepository:
@@ -86,6 +87,8 @@ class ComplaintRepository:
             # date_to counts the whole day, so stop at the next midnight
             conditions.append(Complaint.created_at < datetime.combine(f.date_to + timedelta(days=1),
                                                                       datetime.min.time()))
+        if f.close_requested is not None:
+            conditions.append(Complaint.close_requested.is_(f.close_requested))
         if f.search:
             like = f"%{f.search.strip()}%"
             conditions.append(or_(Complaint.ticket_id.ilike(like), Complaint.title.ilike(like)))

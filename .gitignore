@@ -34,3 +34,6 @@ node_modules/
 # local planning files, kept off github
 UPGRADE_PLAN.md
 AGENTS.md
+
+# frontend build output
+frontend/dist/

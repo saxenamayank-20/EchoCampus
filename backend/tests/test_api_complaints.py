@@ -84,6 +84,7 @@ def test_pagination_and_filters(client, mailbox):
     assert client.get("/complaints?status=Assigned&status=Closed", headers=h).json()["total"] == 6
     assert client.get("/complaints?q=fan 3", headers=h).json()["total"] == 1
     assert client.get("/complaints?date_from=2000-01-01&date_to=2000-01-02", headers=h).json()["total"] == 0
+    assert client.get("/complaints?close_requested=true", headers=h).json()["total"] == 0
     assert client.get("/complaints?page_size=500", headers=h).status_code == 422
 
 
