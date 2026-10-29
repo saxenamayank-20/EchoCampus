@@ -1,157 +1,66 @@
-# College Complaint Portal
+# EchoCampus
 
-A role-based complaint management system built with Streamlit and SQLite.
+A college grievance portal I built so students can raise complaints and track them until they're closed.
 
-This project is designed for a college environment where:
+## Why I built it
 
-- Students can register, log in, and raise complaints.
-- Grievance managers can handle complaints assigned to their category.
-- Admins can monitor the full system, review updates, and officially close complaints.
+Complaints in college usually go through emails or paper forms, so nobody knows who is handling them or what happened next. Here every complaint goes to the right person automatically and its full history stays visible.
 
-The goal is to keep complaint handling simple, trackable, and more transparent for everyone involved.
+## Features
 
-## What This Project Does
+- Student registration with auto-generated IDs (`ST000101`, `ST000102` ...) and password strength rules
+- Complaints routed to a grievance manager by category
+- Priority detected from keywords (Critical / High / Medium / Low)
+- Critical complaints get a Google Meet link
+- Ticket IDs like `TKT-ABC12345`
+- Status flow Pending → Assigned → In Progress → Resolved → Closed, with only the allowed moves
+- Full timeline of every change on a complaint
+- Manager dashboard: update status, add remarks, post updates to the admin, request closure
+- Admin dashboard: stats, all complaints by category, manager updates, close requests
 
-The portal supports the full complaint flow from submission to closure.
+## Tech stack
 
-- Student registration and login
-- Complaint submission with category-based manager assignment
-- Auto-detected complaint priority
-- Special handling for critical complaints
-- Complaint timeline and progress tracking
-- Separate dashboards for students, grievance managers, and admins
-- Admin review of manager updates and close requests
-- Optional REST API using FastAPI
+- Python 3.12
+- Streamlit (current UI)
+- SQLAlchemy 2.x ORM on SQLite (`echocampus.db`)
+- pydantic-settings (reads `.env`)
+- bcrypt (password hashing)
+- FastAPI + Uvicorn (optional API, not used by the UI yet)
+- pandas (tables in the admin dashboard)
+- pytest
 
-## Tech Stack
+## How it works
 
-- Python 3.10+
-- Streamlit (UI)
-- SQLite via Python's built-in `sqlite3` module (raw SQL, single file `complaint_portal.db`)
-- FastAPI + Uvicorn (optional REST API, not used by the Streamlit UI)
-- `bcrypt` (password hashing)
-- `pandas` (tables in the dashboards)
-- `python-dotenv` (loads settings and seed passwords from `.env`)
-- `pytest` (tests)
+The code is split into layers so each part has one job:
 
-## Current Project Structure
-
-```text
-Complaint_Complaint_Portal/
-|-- main.py
-|-- README.md
-|-- requirements.txt
-|-- app/
-|   |-- __init__.py
-|   |-- components/
-|   |   |-- __init__.py
-|   |   `-- ui.py
-|   `-- pages/
-|       |-- __init__.py
-|       |-- admin.py
-|       |-- auth.py
-|       |-- manager.py
-|       `-- student.py
-|-- api/
-|   |-- __init__.py
-|   `-- routes.py
-|-- config/
-|   |-- __init__.py
-|   `-- settings.py
-|-- database/
-|   |-- __init__.py
-|   |-- connection.py
-|   `-- models.py
-|-- scripts/
-|   `-- reset_seed_passwords.py
-|-- tests/
-`-- .env              (your local copy, never committed)
+```mermaid
+flowchart LR
+    UI[Streamlit pages] --> BC[app/backend_client.py]
+    API[api/routes.py] --> BC
+    BC --> S[services: rules]
+    S --> R[repositories: db queries]
+    R --> M[SQLAlchemy models]
+    M --> DB[(SQLite)]
 ```
 
-## How The App Is Organized
+- **models** describe the tables as Python classes
+- **repositories** only read and write the database
+- **services** hold the rules: routing, priority, the status machine, history
+- `app/backend_client.py` turns service results into the dicts the Streamlit pages use
 
-### `main.py`
+## Run it locally
 
-This is the Streamlit entry point. It:
-
-- sets the page configuration
-- initializes the database
-- injects UI styling
-- routes users to the correct dashboard based on role
-
-### `database/connection.py`
-
-This file opens the SQLite connection (`complaint_portal.db` in the working directory) and returns rows as dictionaries.
-The rest of the app uses `get_connection()` from here.
-
-### `database/models.py`
-
-Despite the name, this file currently does more than just models. It contains:
-
-- table creation logic
-- user registration and login logic
-- complaint CRUD operations
-- timeline/history operations
-- admin and manager actions
-- dashboard stats queries
-
-### `config/settings.py`
-
-This file stores:
-
-- predefined admin and manager accounts (their seed passwords are read from `.env`)
-- category-to-manager mapping
-- complaint statuses
-- priority keyword rules
-- password rules and the student ID generator
-
-### `app/pages/`
-
-These files handle the Streamlit dashboards:
-
-- `auth.py` for login and student registration
-- `student.py` for complaint submission, ticket viewing, and status tracking
-- `manager.py` for complaint handling and updates
-- `admin.py` for monitoring, approvals, and final closure
-
-### `api/routes.py`
-
-This is the optional FastAPI layer for exposing the same system through REST endpoints.
-
-## Setup Instructions
-
-### 1. Clone the repository
+You need Python 3.12 and git.
 
 ```bash
-git clone https://github.com/saxenamayank-20/College_Complaint_Portal.git
-cd College_Complaint_Portal
-```
-
-### 2. Create and activate a virtual environment
-
-Linux / macOS:
-
-```bash
+git clone https://github.com/saxenamayank-20/EchoCampus.git
+cd EchoCampus
 python3 -m venv .venv
 source .venv/bin/activate
-```
-
-Windows PowerShell:
-
-```powershell
-python -m venv .venv
-.venv\Scripts\Activate.ps1
-```
-
-### 3. Install dependencies
-
-```bash
 pip install -r requirements.txt
 ```
 
-### 4. Configure `.env`
-
-Create a file named `.env` in the project folder with these variables:
+Create a `.env` file in the project folder with these variables (pick your own strong passwords):
 
 ```
 ADMIN_SEED_PASSWORD=
@@ -161,92 +70,79 @@ GM003_PASSWORD=
 GM004_PASSWORD=
 ```
 
-Set strong, unique values for `ADMIN_SEED_PASSWORD` and `GM001_PASSWORD` … `GM004_PASSWORD`.
-These are used to create the admin and grievance manager accounts on first run. An account whose
-password is empty is skipped. No passwords are stored in the code.
+They're used once to create the admin and the 4 manager accounts. An account with an empty password is skipped.
 
-If the database already exists and you change these values, apply them with:
+Create the tables and accounts, then start the app:
 
 ```bash
-python scripts/reset_seed_passwords.py
-```
-
-### 5. Run the App
-
-The SQLite database file (`complaint_portal.db`) will be created automatically on first run.
-
-```bash
+python scripts/seed.py
 streamlit run main.py
 ```
 
-No additional database configuration is needed.
-
-### 6. Run the tests
-
-```bash
-pytest
-```
-
-## Running The Project
-
-### Run the Streamlit app
-
-```bash
-streamlit run main.py
-```
-
-Default local URL:
-
-`http://localhost:8501`
-
-### Run the FastAPI backend
-
-If you want the API too:
+The app runs on port 8501. To try the optional API (port 8000):
 
 ```bash
 uvicorn api.routes:app --reload --port 8000
 ```
 
-API docs:
+If you change a password in `.env` later, apply it with `python scripts/reset_seed_passwords.py`.
 
-`http://localhost:8000/docs`
+## API routes
 
-## User Roles In The System
+The API has no login yet (that comes with JWT next), so it's only for local testing.
 
-### Student
+| Method | Route | What it does |
+|---|---|---|
+| POST | `/auth/login` | log in with user id + password |
+| POST | `/auth/register` | register a student, returns the new id |
+| POST | `/complaints/submit` | submit a complaint |
+| GET | `/complaints/student/{student_id}` | a student's complaints |
+| GET | `/complaints/manager/{manager_uid}` | a manager's complaints (`?resolved=true` for done ones) |
+| POST | `/complaints/update-status` | manager changes status / remark |
+| POST | `/complaints/request-close` | manager asks the admin to close |
+| POST | `/complaints/admin-close` | admin closes a complaint |
+| POST | `/complaints/manager-update` | manager posts an update for the admin |
+| GET | `/complaints/manager-updates` | all manager updates |
+| GET | `/complaints/{ticket_id}/timeline` | history of one complaint |
+| GET | `/complaints/all` | every complaint |
+| GET | `/users` | users (`?role=student` to filter) |
+| GET | `/stats` | dashboard counts |
+| GET | `/constants/categories` | complaint categories |
+| GET | `/health` | health check |
 
-- Create an account
-- Log in
-- Submit complaints
-- View previous complaints
-- Track complaint progress and timeline
+## Project structure
 
-### Grievance Manager
+```text
+EchoCampus/
+|-- main.py          streamlit entry point
+|-- app/             streamlit pages, ui helpers, backend_client.py
+|-- backend/
+|   |-- app/
+|   |   |-- core/          settings, enums, constants, password hashing
+|   |   |-- db/            engine, session, seed
+|   |   |-- models/        sqlalchemy tables
+|   |   |-- repositories/  db queries
+|   |   `-- services/      business rules + status machine
+|   `-- tests/
+|-- api/             optional fastapi routes
+`-- scripts/         seed and password reset
+```
 
-- View assigned complaints
-- Update status
-- Add remarks
-- Post updates to admin
-- Request final closure after resolution
+## Running tests
 
-### Admin
+```bash
+pytest
+```
 
-- View all active complaints by category
-- Monitor complaint statistics
-- Review manager updates
-- Approve or force final complaint closure
+Tests use a temporary SQLite file, so they never touch your real database.
 
-## Important Notes
+## Challenges / what I learned
 
-- `database/models.py` is currently acting as both schema setup and database service layer.
-- `database/connection.py` should not be removed unless the database layer is refactored.
-- The API is optional. The Streamlit app works as the main interface.
-- On first run, `init_db()` creates the required tables automatically.
+- The first version had real passwords in the code. I moved them to `.env`, and accounts with no password are skipped instead of being created with an empty one.
+- All the SQL and rules lived in one file. Splitting it into models, repositories and services made each part small enough to test on its own.
+- Any status could jump to any other. A small status machine now allows only the real moves and writes every change to the history.
 
-## Possible Future Cleanup
+## Known limitations and what's next
 
-Next I'm moving it to a FastAPI backend with JWT auth, PostgreSQL and a React frontend, then adding AI features.
-
-## License
-
-This project is currently suitable for educational and personal use unless you add a separate license.
+- The API has no authentication yet. Next is a FastAPI backend with JWT login, then a React frontend to replace Streamlit.
+- SQLite is fine locally. PostgreSQL comes later, along with AI features (triage, duplicate detection, a policy assistant).
