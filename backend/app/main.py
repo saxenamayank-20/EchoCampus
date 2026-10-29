@@ -9,7 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.api.errors import register_error_handlers
-from backend.app.api.routes import admin, auth, complaints, manager, meta
+from backend.app.api.routes import admin, attachments, auth, complaints, manager, meta
 from backend.app.core.config import settings
 from backend.app.db.seed import seed_staff
 from backend.app.db.session import SessionLocal, init_db
@@ -33,7 +33,7 @@ def create_app(run_startup: bool = True) -> FastAPI:
                        allow_methods=["*"], allow_headers=["Authorization", "Content-Type"])
     register_error_handlers(app)
 
-    for module in (auth, complaints, manager, admin, meta):
+    for module in (auth, complaints, attachments, manager, admin, meta):
         app.include_router(module.router)
     return app
 

@@ -28,3 +28,11 @@ class AuthenticationError(DomainError):
 
 class NotVerifiedError(DomainError):
     """right password, but the email isn't verified yet"""
+
+
+class TooLargeError(DomainError):
+    """file bigger than the upload limit"""
+
+
+class UnsupportedFileError(DomainError):
+    """file type we don't accept"""
