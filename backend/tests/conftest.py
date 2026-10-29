@@ -1,3 +1,4 @@
+import bcrypt
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -6,6 +7,13 @@ from backend.app.db.session import init_db, make_engine
 
 TEST_PASSWORD = "Test@1234"
 STAFF_IDS = ["ADMIN001", "GM001", "GM002", "GM003", "GM004"]
+
+
+@pytest.fixture(autouse=True)
+def fast_bcrypt(monkeypatch):
+    # bcrypt is slow on purpose, the lowest cost keeps tests quick
+    real_gensalt = bcrypt.gensalt
+    monkeypatch.setattr(bcrypt, "gensalt", lambda: real_gensalt(rounds=4))
 
 
 @pytest.fixture
