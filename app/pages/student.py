@@ -1,9 +1,9 @@
 import streamlit as st
-from database.models import (submit_complaint, get_student_complaints,
-                              get_complaint_timeline, auto_detect_priority)
+from app.backend_client import (submit_complaint, get_student_complaints,
+                                get_complaint_timeline, auto_detect_priority)
 from app.components.ui import (page_header, metric_card, status_badge,
                                 priority_badge, render_timeline, render_progress_tracker)
-from config.settings import CATEGORIES
+from backend.app.core.constants import CATEGORIES
 
 
 def render_student_dashboard(user):

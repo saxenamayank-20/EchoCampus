@@ -1,8 +1,8 @@
 import streamlit as st
 import pandas as pd
-from database.models import (get_all_complaints_by_category, get_resolved_complaints,
-                              admin_close_complaint, get_manager_updates,
-                              get_stats, get_complaint_timeline)
+from app.backend_client import (get_all_complaints_by_category, get_resolved_complaints,
+                                admin_close_complaint, get_manager_updates,
+                                get_stats, get_complaint_timeline)
 from app.components.ui import (page_header, metric_card, status_badge,
                                 priority_badge, render_timeline)
 
@@ -74,8 +74,9 @@ def render_admin_dashboard(user):
                         if comp.get("manager_remarks"):
                             st.markdown(f"**Manager note:** {comp['manager_remarks'][:80]}...")
                         if st.button("✅ Officially Close", key=f"cls_{comp['ticket_id']}", type="primary"):
-                            admin_close_complaint(comp["ticket_id"], user["user_id"])
-                            st.success(f"{comp['ticket_id']} closed."); st.rerun()
+                            ok, msg = admin_close_complaint(comp["ticket_id"], user["user_id"])
+                            if ok: st.success(msg); st.rerun()
+                            else: st.error(msg)
 
             st.divider()
 
@@ -93,8 +94,9 @@ def render_admin_dashboard(user):
                         st.markdown(f"**Resolved:** {str(comp.get('resolved_at') or '—')[:10]}")
                         st.markdown(f"**Note:** {comp.get('manager_remarks','—')}")
                     if st.button("🔒 Force Close", key=f"fc_{comp['ticket_id']}"):
-                        admin_close_complaint(comp["ticket_id"], user["user_id"])
-                        st.success("Closed."); st.rerun()
+                        ok, msg = admin_close_complaint(comp["ticket_id"], user["user_id"], force=True)
+                        if ok: st.success(msg); st.rerun()
+                        else: st.error(msg)
             st.divider()
 
         # ── Already closed ──

@@ -2,11 +2,11 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
-from database.models import (login_user, register_student, submit_complaint,
+from app.backend_client import (login_user, register_student, submit_complaint,
     get_student_complaints, get_manager_complaints, update_complaint_status,
     get_complaint_timeline, get_all_complaints, get_all_users, get_stats,
     request_close, admin_close_complaint, add_manager_update, get_manager_updates)
-from config.settings import CATEGORIES, STATUS_FLOW, generate_student_id
+from backend.app.core.constants import CATEGORIES
 
 app = FastAPI(title="College Complaint Portal API", version="2.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True,
@@ -19,7 +19,7 @@ class ComplaintReq(BaseModel): student_id: str; title: str; description: str; ca
 class StatusReq(BaseModel):   ticket_id: str; new_status: str; manager_uid: str; remark: Optional[str]=""
 class CloseReq(BaseModel):    ticket_id: str; manager_uid: str
 class AdminCloseReq(BaseModel): ticket_id: str; admin_id: str
-class UpdateReq(BaseModel):   ticket_id: str; manager_id: str; manager_name: str; update_text: str
+class UpdateReq(BaseModel):   ticket_id: str; manager_id: str; update_text: str
 
 
 @app.post("/auth/login")
@@ -29,8 +29,7 @@ async def auth_login(r: LoginReq):
 
 @app.post("/auth/register")
 async def auth_register(r: RegisterReq):
-    user_id = generate_student_id()
-    ok, msg = register_student(user_id, r.name, r.email, r.password, r.department)
+    ok, msg, user_id = register_student(r.name, r.email, r.password, r.department)
     return {"success": ok, "user_id": user_id, "message": msg} if ok else {"success": False, "error": msg}
 
 @app.post("/complaints/submit")
@@ -55,16 +54,18 @@ async def update_status(r: StatusReq):
 
 @app.post("/complaints/request-close")
 async def req_close(r: CloseReq):
-    request_close(r.ticket_id, r.manager_uid); return {"success": True}
+    ok, msg = request_close(r.ticket_id, r.manager_uid)
+    return {"success": ok, "message" if ok else "error": msg}
 
 @app.post("/complaints/admin-close")
 async def adm_close(r: AdminCloseReq):
-    admin_close_complaint(r.ticket_id, r.admin_id); return {"success": True}
+    ok, msg = admin_close_complaint(r.ticket_id, r.admin_id)
+    return {"success": ok, "message" if ok else "error": msg}
 
 @app.post("/complaints/manager-update")
 async def post_update(r: UpdateReq):
-    add_manager_update(r.ticket_id, r.manager_id, r.manager_name, r.update_text)
-    return {"success": True}
+    ok, msg = add_manager_update(r.ticket_id, r.manager_id, r.update_text)
+    return {"success": ok, "message" if ok else "error": msg}
 
 @app.get("/complaints/manager-updates")
 async def get_updates(): return {"success": True, "updates": get_manager_updates()}

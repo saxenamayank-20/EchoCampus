@@ -5,13 +5,13 @@ _ = sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import streamlit as st
 
+from app.backend_client import init_db
 from app.components.ui import inject_css
 from app.pages.admin import render_admin_dashboard
 from app.pages.auth import render_login, render_register
 from app.pages.manager import render_manager_dashboard
 from app.pages.student import render_student_dashboard
-from config.settings import APP_TITLE
-from database.models import init_db
+from backend.app.core.constants import APP_TITLE
 
 if "page_config_done" not in st.session_state:
     st.set_page_config(

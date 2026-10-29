@@ -1,6 +1,7 @@
 import streamlit as st
-from database.models import (get_manager_complaints, update_complaint_status,
-                              get_complaint_timeline, request_close, add_manager_update)
+from app.backend_client import (get_manager_complaints, update_complaint_status,
+                                get_complaint_timeline, request_close, add_manager_update,
+                                manager_status_options)
 from app.components.ui import (page_header, metric_card, status_badge,
                                 priority_badge, render_timeline, render_progress_tracker)
 
@@ -73,8 +74,9 @@ def render_manager_dashboard(user):
                         st.caption("⏳ Awaiting Admin approval")
                     elif comp["status"] != "Closed":
                         if st.button("📤 Request Admin to Close", key=f"req_{comp['ticket_id']}", type="primary"):
-                            request_close(comp["ticket_id"], user["user_id"])
-                            st.success("✅ Close request sent to Admin."); st.rerun()
+                            ok, msg = request_close(comp["ticket_id"], user["user_id"])
+                            if ok: st.success(f"✅ {msg}"); st.rerun()
+                            else: st.error(msg)
 
                 st.info(comp["description"])
                 if comp.get("manager_remarks"):
@@ -126,10 +128,8 @@ def _complaint_detail(comp, user):
     with col_form:
         st.markdown("#### Update Status")
         with st.form(f"st_{comp['ticket_id']}"):
-            valid = ["Assigned","In Progress","Resolved"]
-            try: ci = valid.index(comp["status"])
-            except: ci = 0
-            ns     = st.selectbox("New Status", valid, index=ci)
+            # only the moves the status machine allows, current status first
+            ns     = st.selectbox("New Status", manager_status_options(comp["ticket_id"]))
             remark = st.text_area("Remark / Resolution Note",
                                   value=comp.get("manager_remarks",""),
                                   placeholder="Describe action taken...")
@@ -145,8 +145,9 @@ def _complaint_detail(comp, user):
                                 placeholder="Share a progress update with the Admin...", height=100)
             if st.form_submit_button("📤 Send to Admin", use_container_width=True):
                 if text.strip():
-                    add_manager_update(comp["ticket_id"], user["user_id"], user["name"], text.strip())
-                    st.success("Update sent."); st.rerun()
+                    ok, msg = add_manager_update(comp["ticket_id"], user["user_id"], text.strip())
+                    if ok: st.success(msg); st.rerun()
+                    else: st.error(msg)
                 else: st.warning("Please write a message first.")
 
     st.markdown("##### 🕐 Timeline")
