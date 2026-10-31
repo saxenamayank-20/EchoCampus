@@ -50,6 +50,9 @@ class Settings(BaseSettings):
     sla_hours_low: int = 168
     run_scheduler: bool = True   # the 15 minute background job
 
+    # student has this many days to say "fixed" or "not fixed", then it auto-confirms
+    confirmation_window_days: int = 3
+
     def sla_hours(self, priority: str) -> int:
         return {"Critical": self.sla_hours_critical, "High": self.sla_hours_high,
                 "Medium": self.sla_hours_medium}.get(str(priority), self.sla_hours_low)

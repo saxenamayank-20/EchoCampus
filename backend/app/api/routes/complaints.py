@@ -6,7 +6,7 @@ from fastapi import APIRouter, Query, status
 from backend.app.core.deps import DB, CurrentUser, Student
 from backend.app.core.enums import Priority, Status
 from backend.app.repositories.complaint_repository import ComplaintFilters
-from backend.app.schemas.complaint import (ComplaintIn, ComplaintOut, HistoryOut, Page,
+from backend.app.schemas.complaint import (ComplaintIn, ComplaintOut, ConfirmIn, HistoryOut, Page,
                                            PriorityPreviewOut)
 from backend.app.services.complaint_service import ComplaintService
 from backend.app.services.priority import KeywordPriorityDetector
@@ -57,3 +57,10 @@ def get_one(ticket_id: str, db: DB, user: CurrentUser):
 def timeline(ticket_id: str, db: DB, user: CurrentUser):
     complaint = ComplaintService(db).get_for(user, ticket_id)
     return [HistoryOut.of(h) for h in complaint.history]
+
+
+@router.post("/{ticket_id}/confirm", response_model=ComplaintOut)
+def confirm(ticket_id: str, body: ConfirmIn, db: DB, student: Student):
+    """student answers: fixed (with an optional 1-5 rating) or not fixed (reason needed)"""
+    return ComplaintOut.of(ComplaintService(db).student_respond(
+        ticket_id, student, body.fixed, body.rating, body.reason))

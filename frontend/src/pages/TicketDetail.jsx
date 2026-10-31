@@ -5,6 +5,7 @@ import { AlertTriangle, ArrowLeft, Video } from "lucide-react";
 import { api } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import Attachments from "../components/Attachments";
+import { ConfirmationSummary, StudentConfirmPanel } from "../components/Confirmation";
 import { PriorityBadge, StatusBadge } from "../components/Badges";
 import { ErrorBox, Skeleton } from "../components/Feedback";
 import Modal from "../components/Modal";
@@ -61,9 +62,10 @@ function ManagerPanel({ complaint }) {
     onSuccess: () => { toast.success("Update sent to the admin."); setUpdate(""); },
     onError,
   });
+  const [closeNote, setCloseNote] = useState("");
   const closeRequest = useMutation({
-    mutationFn: () => api(`/manager/complaints/${t}/close-request`, { method: "POST" }),
-    onSuccess: () => { toast.success("Close request sent to the admin."); refresh(); },
+    mutationFn: () => api(`/manager/complaints/${t}/close-request`, { method: "POST", body: { note: closeNote } }),
+    onSuccess: () => { toast.success("Sent. The student will be asked to confirm."); setCloseNote(""); refresh(); },
     onError,
   });
 
@@ -95,14 +97,14 @@ function ManagerPanel({ complaint }) {
           {complaint.status === "Resolved" && (
             <div className="rounded-lg border border-slate-200 p-3 dark:border-slate-800">
               {complaint.close_requested ? (
-                <p className="text-sm text-amber-600">Close request sent, waiting for the admin.</p>
+                <p className="text-sm text-amber-600">Close request sent. Waiting for the student, then the admin.</p>
               ) : (
-                <>
-                  <p className="mb-2 text-sm text-slate-500">Fixed for good? Ask the admin to close it.</p>
-                  <button className="btn-primary" onClick={() => closeRequest.mutate()} disabled={closeRequest.isPending}>
-                    Request closure
-                  </button>
-                </>
+                <form onSubmit={(e) => { e.preventDefault(); closeRequest.mutate(); }} className="space-y-2">
+                  <label className="label" htmlFor="cn">Fixed for good? Tell the student what was done</label>
+                  <textarea id="cn" rows={2} className="input" value={closeNote} onChange={(e) => setCloseNote(e.target.value)}
+                    placeholder="e.g. New fan installed and tested" />
+                  <button className="btn-primary" disabled={!closeNote.trim() || closeRequest.isPending}>Request closure</button>
+                </form>
               )}
             </div>
           )}
@@ -115,35 +117,59 @@ function ManagerPanel({ complaint }) {
 function AdminPanel({ complaint }) {
   const toast = useToast();
   const refresh = useRefresh(complaint.ticket_id);
-  const [confirmForce, setConfirmForce] = useState(false);
+  const [overrideOpen, setOverrideOpen] = useState(false);
+  const [reason, setReason] = useState("");
+  const [message, setMessage] = useState("");
+  const t = complaint.ticket_id;
   const close = useMutation({
-    mutationFn: (force) => api(`/admin/complaints/${complaint.ticket_id}/close`, { method: "POST", body: { force } }),
-    onSuccess: () => { toast.success("Complaint closed."); setConfirmForce(false); refresh(); },
+    mutationFn: (body) => api(`/admin/complaints/${t}/close`, { method: "POST", body }),
+    onSuccess: () => { toast.success("Complaint closed."); setOverrideOpen(false); refresh(); },
+    onError: (e) => toast.error(e.message),
+  });
+  const send = useMutation({
+    mutationFn: () => api(`/admin/complaints/${t}/message`, { method: "POST", body: { text: message } }),
+    onSuccess: () => { toast.success("Message sent to the manager."); setMessage(""); refresh(); },
     onError: (e) => toast.error(e.message),
   });
 
-  if (complaint.status !== "Resolved") return null;
+  if (complaint.status === "Closed") return null;
+  const response = complaint.confirmation?.response;
+  const ready = complaint.close_requested && ["confirmed", "auto_confirmed"].includes(response);
+  const waiting = complaint.close_requested && response === "pending";
+
   return (
     <Section title="Admin actions">
-      {complaint.close_requested ? (
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm">The manager resolved this and asked to close it.</p>
-          <button className="btn-primary" onClick={() => close.mutate(false)} disabled={close.isPending}>Officially close</button>
-        </div>
-      ) : (
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-slate-500">Resolved, but the manager hasn't asked to close it yet.</p>
-          <button className="btn-danger" onClick={() => setConfirmForce(true)}>Force close</button>
+      {complaint.status === "Resolved" && (
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+          {ready && <p className="text-sm">The student {response === "confirmed" ? "confirmed the fix" : "didn't answer in time (auto-confirmed)"}.</p>}
+          {waiting && <p className="text-sm text-amber-600">Waiting for the student to confirm. Closing now needs a reason.</p>}
+          {!complaint.close_requested && <p className="text-sm text-slate-500">Resolved, but the manager hasn't asked to close it yet.</p>}
+          {ready ? (
+            <button className="btn-primary" onClick={() => close.mutate({ force: false })} disabled={close.isPending}>Officially close</button>
+          ) : (
+            <button className="btn-danger" onClick={() => setOverrideOpen(true)}>{waiting ? "Override and close" : "Force close"}</button>
+          )}
         </div>
       )}
-      {confirmForce && (
-        <Modal title="Force close?" onClose={() => setConfirmForce(false)}>
-          <p className="mb-4 text-sm text-slate-600 dark:text-slate-300">
-            This closes the ticket without the manager's close request. It will show as "Admin Force Closed" in the timeline.
+
+      <form onSubmit={(e) => { e.preventDefault(); send.mutate(); }} className="space-y-2">
+        <label className="label" htmlFor="am">Message to the manager</label>
+        <textarea id="am" rows={2} className="input" value={message} onChange={(e) => setMessage(e.target.value)}
+          placeholder="e.g. The student says it's still broken, please check again" />
+        <button className="btn-secondary" disabled={!message.trim() || send.isPending}>Send</button>
+      </form>
+
+      {overrideOpen && (
+        <Modal title={waiting ? "Override and close?" : "Force close?"} onClose={() => setOverrideOpen(false)}>
+          <p className="mb-3 text-sm text-slate-600 dark:text-slate-300">
+            This skips the normal steps. Your reason is saved in the ticket's history.
           </p>
+          <textarea rows={3} className="input mb-4" value={reason} onChange={(e) => setReason(e.target.value)}
+            placeholder="Why are you closing it now?" aria-label="Reason" />
           <div className="flex justify-end gap-2">
-            <button className="btn-secondary" onClick={() => setConfirmForce(false)}>Cancel</button>
-            <button className="btn-danger" onClick={() => close.mutate(true)} disabled={close.isPending}>Force close</button>
+            <button className="btn-secondary" onClick={() => setOverrideOpen(false)}>Cancel</button>
+            <button className="btn-danger" disabled={!reason.trim() || close.isPending}
+              onClick={() => close.mutate({ force: true, reason })}>Close it</button>
           </div>
         </Modal>
       )}
@@ -230,6 +256,10 @@ export default function TicketDetail() {
             )}
           </Section>
 
+          {isOwner && c.confirmation?.response === "pending" && c.status === "Resolved" && (
+            <StudentConfirmPanel complaint={c} onDone={() => { ticket.refetch(); timeline.refetch(); }} />
+          )}
+          <ConfirmationSummary complaint={c} />
           {isAssigned && <ManagerPanel key={c.status} complaint={c} />}
           {user.role === "admin" && <AdminPanel complaint={c} />}
 

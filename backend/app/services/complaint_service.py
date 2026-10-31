@@ -1,9 +1,10 @@
 import json
 import random
 import string
-from collections import Counter
+from collections import Counter, defaultdict
 from datetime import timedelta
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from backend.app.core.cache import get_cache
@@ -12,11 +13,14 @@ from backend.app.core.constants import CATEGORIES, MANAGER_MEET_LINKS
 from backend.app.core.rate_limit import hit
 from backend.app.core.enums import Priority, Role, Status
 from backend.app.db.base import now
-from backend.app.models import Complaint, ComplaintHistory, ManagerUpdate, User
+from backend.app.models import ClosureConfirmation, Complaint, ComplaintHistory, ManagerUpdate, User
+from backend.app.models.confirmation import (AUTO_CONFIRMED, CONFIRMED, DISPUTED, PENDING,
+                                             WITHDRAWN)
 from backend.app.repositories.complaint_repository import ComplaintFilters, ComplaintRepository
 from backend.app.repositories.user_repository import UserRepository
-from backend.app.services.errors import (DomainError, InvalidInputError, InvalidTransitionError,
-                                         NotFoundError, PermissionDeniedError)
+from backend.app.services.errors import (ConflictError, DomainError, InvalidInputError,
+                                         InvalidTransitionError, NotFoundError, PermissionDeniedError)
+from backend.app.services.notification_service import NotificationService
 from backend.app.services.priority import KeywordPriorityDetector
 from backend.app.services.status_machine import SYSTEM, StatusMachine
 
@@ -42,6 +46,7 @@ class ComplaintService:
         self.complaints = ComplaintRepository(db)
         self.detector = detector or KeywordPriorityDetector()
         self.machine = machine or StatusMachine()
+        self.notes = NotificationService(db)
 
     # ── student side ──────────────────────────────────────────────────────────
     def submit(self, student: User, title: str, description: str, category: str,
@@ -93,22 +98,77 @@ class ComplaintService:
                 # reopened, so the old close request doesn't count anymore
                 complaint.resolved_at = None
                 complaint.close_requested = False
+                last = complaint.latest_confirmation
+                if last and last.student_response == PENDING:
+                    last.student_response = WITHDRAWN
             complaint.manager_remarks = remark
             self._change_status(complaint, new_status, manager, "Status Updated", remark)
 
         self._commit()
         return complaint
 
-    def request_close(self, ticket_id: str, manager: User) -> Complaint:
+    def request_close(self, ticket_id: str, manager: User, note: str = "") -> Complaint:
+        """manager says it's fixed. the student must confirm before the admin can close"""
         complaint = self._get(ticket_id)
         self._check_assigned_manager(complaint, manager)
         if complaint.status != Status.RESOLVED:
             raise InvalidTransitionError("Only resolved complaints can be sent to the admin for closing.")
-        if not complaint.close_requested:
-            complaint.close_requested = True
-            self._log(complaint, manager, "Close Requested", None, None,
-                      "Manager sent close request to Admin")
-            self._commit()
+        note = note.strip()
+        if not note:
+            # also covers "after a dispute the manager must add a new note"
+            raise InvalidInputError("Add a short note on what was done.")
+        last = complaint.latest_confirmation
+        if last and last.student_response in (PENDING, CONFIRMED, AUTO_CONFIRMED) and complaint.close_requested:
+            raise ConflictError("A close request is already open for this complaint.")
+
+        days = settings.confirmation_window_days
+        self.db.add(ClosureConfirmation(complaint=complaint, manager=manager, manager_note=note,
+                                        due_at=now() + timedelta(days=days)))
+        complaint.close_requested = True
+        self._log(complaint, manager, "Close Requested", None, None, note)
+        self.notes.notify(complaint.student, "confirm_fix",
+                          f"{complaint.ticket_id} was marked resolved. Was it really fixed? "
+                          f"Please answer within {days} days.", complaint)
+        self._commit()
+        return complaint
+
+    # ── student confirms or disputes ─────────────────────────────────────────
+    def student_respond(self, ticket_id: str, student: User, fixed: bool,
+                        rating: int | None = None, reason: str = "") -> Complaint:
+        complaint = self._get(ticket_id)
+        if complaint.student_id != student.id:
+            raise PermissionDeniedError("Only the student who raised this complaint can answer.")
+        confirmation = complaint.latest_confirmation
+        if not confirmation or confirmation.student_response != PENDING:
+            raise ConflictError("There's nothing to confirm on this complaint right now.")
+        confirmation.responded_at = now()
+        admins = self.users.list_users(Role.ADMIN)
+
+        if fixed:
+            if rating is not None and not 1 <= rating <= 5:
+                raise InvalidInputError("Rating must be 1 to 5.")
+            confirmation.student_response = CONFIRMED
+            confirmation.rating = rating
+            self._log(complaint, student, "Student Confirmed", None, None,
+                      f"Rating: {rating}/5" if rating else "Student confirmed the fix")
+            self.notes.notify_many(admins, "student_confirmed",
+                                   f"{complaint.ticket_id}: student confirmed the fix, ready to close.", complaint)
+        else:
+            reason = reason.strip()
+            if not reason:
+                raise InvalidInputError("Tell us what's still wrong.")
+            confirmation.student_response = DISPUTED
+            confirmation.student_reason = reason
+            # back to in progress automatically, the close request is cancelled
+            self.machine.check(complaint.status, Status.IN_PROGRESS, SYSTEM)
+            complaint.close_requested = False
+            complaint.resolved_at = None
+            self._change_status(complaint, Status.IN_PROGRESS, student, "Student Disputed", reason)
+            message = f"{complaint.ticket_id}: student says it's NOT fixed: {reason}"
+            self.notes.notify_many(admins, "student_disputed", message, complaint)
+            if complaint.manager:
+                self.notes.notify(complaint.manager, "student_disputed", message, complaint)
+        self._commit()
         return complaint
 
     def add_manager_update(self, ticket_id: str, manager: User, text: str) -> None:
@@ -121,25 +181,77 @@ class ComplaintService:
         self._commit()
 
     # ── admin side ────────────────────────────────────────────────────────────
-    def admin_close(self, ticket_id: str, admin: User, force: bool = False) -> Complaint:
-        """closes a resolved complaint. force skips the manager's close request (logged in history)"""
+    def admin_close(self, ticket_id: str, admin: User, force: bool = False, reason: str = "") -> Complaint:
+        """closes a resolved complaint once the student confirmed (or it auto-confirmed).
+        force = close anyway, needs a written reason that goes into the history"""
         if admin.role != Role.ADMIN:
             raise PermissionDeniedError("Only the admin can close complaints.")
         complaint = self._get(ticket_id)
-        if not complaint.close_requested and not force:
-            raise DomainError("The manager hasn't asked to close this complaint yet.")
         self.machine.check(complaint.status, Status.CLOSED, Role.ADMIN)
+        confirmation = complaint.latest_confirmation
+        waiting = complaint.close_requested and confirmation and confirmation.student_response == PENDING
+        reason = reason.strip()
 
+        if complaint.close_requested and not waiting:
+            action, note, decision = "Admin Closed", "Complaint officially closed by Admin", "approved"
+        elif not force:
+            if waiting:
+                raise DomainError(f"Waiting for the student to confirm (until {confirmation.due_at:%d %b %H:%M}). "
+                                  "Use override with a reason to close anyway.")
+            raise DomainError("The manager hasn't asked to close this complaint yet.")
+        elif not reason:
+            raise InvalidInputError("A written reason is needed to close without the normal steps.")
+        elif waiting:
+            action, note, decision = "Admin Override Close", reason, "override"
+        else:
+            action, note, decision = "Admin Force Closed", reason, "override"
+
+        if confirmation and complaint.close_requested:
+            confirmation.admin_decision = decision
+            confirmation.admin_note = reason or None
         complaint.close_requested = False
         complaint.resolved_at = now()
-        if force:
-            self._change_status(complaint, Status.CLOSED, admin, "Admin Force Closed",
-                                "Closed by Admin without a close request")
-        else:
-            self._change_status(complaint, Status.CLOSED, admin, "Admin Closed",
-                                "Complaint officially closed by Admin")
+        self._change_status(complaint, Status.CLOSED, admin, action, note)
+        self.notes.notify(complaint.student, "closed", f"{complaint.ticket_id} was closed by the admin.", complaint)
         self._commit()
         return complaint
+
+    def admin_message(self, ticket_id: str, admin: User, text: str) -> None:
+        """admin writes to the manager in the ticket thread (e.g. after a dispute)"""
+        complaint = self._get(ticket_id)
+        if not text.strip():
+            raise InvalidInputError("Message can't be empty.")
+        self._log(complaint, admin, "Admin Message", None, None, text.strip())
+        if complaint.manager:
+            self.notes.notify(complaint.manager, "admin_message",
+                              f"Admin on {complaint.ticket_id}: {text.strip()}", complaint)
+        self._commit()
+
+    def quality_metrics(self) -> dict:
+        """how well managers fix things, judged by the students"""
+        rounds = list(self.db.scalars(select(ClosureConfirmation)))
+        per_manager: dict[str, dict] = {}
+        per_category: dict[str, list[int]] = defaultdict(list)
+        for r in rounds:
+            m = per_manager.setdefault(r.manager.user_id, {"manager_id": r.manager.user_id, "name": r.manager.name,
+                                                           "close_requests": 0, "disputed": 0, "ratings": []})
+            m["close_requests"] += 1
+            m["disputed"] += r.student_response == DISPUTED
+            if r.rating:
+                m["ratings"].append(r.rating)
+                per_category[self.db.get(Complaint, r.complaint_id).category].append(r.rating)
+
+        managers = []
+        for m in per_manager.values():
+            ratings = m.pop("ratings")
+            m["dispute_rate"] = round(m["disputed"] / m["close_requests"], 2)
+            m["avg_rating"] = round(sum(ratings) / len(ratings), 2) if ratings else None
+            managers.append(m)
+        return {
+            "managers": sorted(managers, key=lambda m: m["manager_id"]),
+            "categories": {cat: round(sum(v) / len(v), 2) for cat, v in sorted(per_category.items())},
+            "reopened_after_close_request": sum(r.student_response == DISPUTED for r in rounds),
+        }
 
     # ── reading ───────────────────────────────────────────────────────────────
     def get_for(self, viewer: User, ticket_id: str) -> Complaint:

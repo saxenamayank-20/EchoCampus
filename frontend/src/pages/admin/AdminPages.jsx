@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import { PriorityBadge, StatusBadge } from "../../components/Badges";
+import { ConfirmationBadge, PriorityBadge, StatusBadge } from "../../components/Badges";
 import ComplaintTable from "../../components/ComplaintTable";
 import { EmptyState, ErrorBox, PageHeader, SkeletonRows } from "../../components/Feedback";
 import Pagination from "../../components/Pagination";
@@ -17,23 +17,25 @@ export function AllComplaints() {
   );
 }
 
-function ComplaintCards({ params, empty }) {
+function ComplaintCards({ params, empty, only = () => true }) {
   const { data, isLoading, error } = useQuery({
     queryKey: ["complaints", "cards", params],
     queryFn: () => api("/complaints", { params: { ...params, page_size: 50 } }),
   });
   if (error) return <ErrorBox error={error} />;
   if (isLoading) return <div className="card"><SkeletonRows rows={3} /></div>;
-  if (!data.items.length) return <div className="card"><EmptyState title={empty} /></div>;
+  const items = data.items.filter(only);
+  if (!items.length) return <div className="card"><EmptyState title={empty} /></div>;
   return (
     <div className="grid gap-3 md:grid-cols-2">
-      {data.items.map((c) => (
+      {items.map((c) => (
         <Link key={c.ticket_id} to={`/tickets/${c.ticket_id}`} className="card block p-4 transition hover:border-indigo-300">
           <div className="mb-2 flex items-start justify-between gap-2">
             <span className="font-mono text-xs text-slate-500">{c.ticket_id}</span>
             <div className="flex gap-1.5"><PriorityBadge priority={c.priority} /><StatusBadge status={c.status} /></div>
           </div>
           <p className="font-medium">{c.title}</p>
+          {c.confirmation && <div className="mt-1.5"><ConfirmationBadge confirmation={c.confirmation} /></div>}
           <p className="mt-1 text-xs text-slate-500">{c.category} · {c.manager_name ?? "—"} · resolved {formatDate(c.resolved_at)}</p>
           {c.manager_remarks && <p className="mt-2 line-clamp-2 text-sm text-slate-600 dark:text-slate-300">“{c.manager_remarks}”</p>}
         </Link>
@@ -43,12 +45,17 @@ function ComplaintCards({ params, empty }) {
 }
 
 export function CloseRequests() {
+  const ready = (c) => ["confirmed", "auto_confirmed"].includes(c.confirmation?.response);
   return (
     <div className="space-y-8">
-      <PageHeader title="Close requests" subtitle="Managers resolved these and want them officially closed" />
+      <PageHeader title="Close requests" subtitle="The manager says it's fixed, the student confirms, then you close it" />
       <section>
-        <h2 className="mb-3 text-sm font-semibold text-amber-600">Waiting for you</h2>
-        <ComplaintCards params={{ status: "Resolved", close_requested: true }} empty="No close requests right now." />
+        <h2 className="mb-3 text-sm font-semibold text-emerald-600">Ready to close (student confirmed)</h2>
+        <ComplaintCards params={{ status: "Resolved", close_requested: true }} only={ready} empty="Nothing ready yet." />
+      </section>
+      <section>
+        <h2 className="mb-3 text-sm font-semibold text-amber-600">Waiting for the student</h2>
+        <ComplaintCards params={{ status: "Resolved", close_requested: true }} only={(c) => !ready(c)} empty="No one is waiting." />
       </section>
       <section>
         <h2 className="mb-3 text-sm font-semibold text-slate-500">Resolved, no close request yet</h2>

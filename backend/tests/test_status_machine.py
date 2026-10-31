@@ -13,6 +13,7 @@ ALLOWED = [
     (Status.ASSIGNED, Status.IN_PROGRESS, Role.MANAGER),
     (Status.IN_PROGRESS, Status.RESOLVED, Role.MANAGER),
     (Status.RESOLVED, Status.IN_PROGRESS, Role.MANAGER),
+    (Status.RESOLVED, Status.IN_PROGRESS, SYSTEM),      # student disputed the fix
     (Status.RESOLVED, Status.CLOSED, Role.ADMIN),
 ]
 ACTORS = [SYSTEM, Role.STUDENT, Role.MANAGER, Role.ADMIN]

@@ -2,6 +2,7 @@
 from apscheduler.schedulers.background import BackgroundScheduler
 
 from backend.app.db.session import SessionLocal
+from backend.app.services.confirmation_service import ConfirmationService
 from backend.app.services.sla_service import SlaService
 
 
@@ -10,8 +11,11 @@ def run_periodic_jobs() -> None:
     try:
         with SessionLocal() as db:
             escalated = SlaService(db).escalate_overdue()
-            if escalated:
-                print(f"[JOBS] escalated {len(escalated)} overdue complaint(s)")
+            confirmations = ConfirmationService(db)
+            reminded = confirmations.send_reminders()
+            auto = confirmations.auto_confirm_due()
+            if escalated or reminded or auto:
+                print(f"[JOBS] escalated {len(escalated)}, reminders {reminded}, auto-confirmed {len(auto)}")
     except Exception as e:  # a failing job must never kill the scheduler thread
         print(f"[JOBS] periodic job failed: {e}")
 

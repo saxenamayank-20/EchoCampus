@@ -22,3 +22,23 @@ export function StatusBadge({ status }) {
 export function PriorityBadge({ priority }) {
   return <span className={`${base} ${PRIORITY[priority] ?? PRIORITY.Low}`}>{priority}</span>;
 }
+
+const CONFIRMATION = {
+  pending: ["Waiting for student", "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"],
+  confirmed: ["Student confirmed", "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"],
+  auto_confirmed: ["Auto-confirmed (no reply)", "bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300"],
+  disputed: ["Student disputed", "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300"],
+  withdrawn: ["Reopened by manager", "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"],
+};
+
+// what the student said about the latest close request
+export function ConfirmationBadge({ confirmation }) {
+  if (!confirmation) return null;
+  const [label, cls] = CONFIRMATION[confirmation.response] ?? [confirmation.response, ""];
+  return (
+    <span className={`${base} ${cls}`}>
+      {label}
+      {confirmation.rating ? ` · ${"★".repeat(confirmation.rating)}` : ""}
+    </span>
+  );
+}

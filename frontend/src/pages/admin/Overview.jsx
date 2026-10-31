@@ -24,6 +24,49 @@ function ChartCard({ title, children }) {
 
 const tooltipStyle = { contentStyle: { borderRadius: 8, fontSize: 12 } };
 
+// how well managers fix things, judged by the students
+function QualityTable() {
+  const { data } = useQuery({ queryKey: ["admin-quality"], queryFn: () => api("/admin/quality") });
+  if (!data) return null;
+  const pct = (x) => `${Math.round(x * 100)}%`;
+  return (
+    <div className="card mt-6 overflow-hidden">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-5 py-3 dark:border-slate-800">
+        <h2 className="text-sm font-semibold">Fix quality (from student answers)</h2>
+        <span className="text-xs text-slate-500">Reopened after a close request: {data.reopened_after_close_request}</span>
+      </div>
+      {!data.managers.length ? (
+        <EmptyState title="No close requests yet" />
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-800/50">
+              <tr><th className="px-5 py-2.5">Manager</th><th className="px-5 py-2.5">Close requests</th>
+                <th className="px-5 py-2.5">Disputed</th><th className="px-5 py-2.5">Dispute rate</th><th className="px-5 py-2.5">Avg rating</th></tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              {data.managers.map((m) => (
+                <tr key={m.manager_id}>
+                  <td className="px-5 py-2.5">{m.name} <span className="text-xs text-slate-500">({m.manager_id})</span></td>
+                  <td className="px-5 py-2.5">{m.close_requests}</td>
+                  <td className="px-5 py-2.5">{m.disputed}</td>
+                  <td className={`px-5 py-2.5 ${m.dispute_rate >= 0.3 ? "font-medium text-red-600" : ""}`}>{pct(m.dispute_rate)}</td>
+                  <td className="px-5 py-2.5">{m.avg_rating ? `${m.avg_rating} ★` : "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {Object.keys(data.categories).length > 0 && (
+        <p className="border-t border-slate-200 px-5 py-3 text-xs text-slate-500 dark:border-slate-800">
+          Avg rating by category: {Object.entries(data.categories).map(([k, v]) => `${k} ${v}★`).join(" · ")}
+        </p>
+      )}
+    </div>
+  );
+}
+
 // complaints past their sla time, plus a button to run the 15 min check right now
 function OverdueList() {
   const toast = useToast();
@@ -157,6 +200,7 @@ export default function Overview() {
           </ChartCard>
         </div>
       )}
+      <QualityTable />
     </div>
   );
 }

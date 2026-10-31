@@ -101,7 +101,8 @@ def test_full_flow_to_closed(users, complaints, student):
 
     complaints.update_status(t, "In Progress", gm, "electrician called")
     complaints.update_status(t, "Resolved", gm, "fan replaced")
-    complaints.request_close(t, gm)
+    complaints.request_close(t, gm, "fan replaced")
+    complaints.student_respond(t, student, fixed=True, rating=5)
     closed = complaints.admin_close(t, admin)
 
     assert closed.status == Status.CLOSED and not closed.close_requested
@@ -135,7 +136,7 @@ def test_reopen_clears_close_request(users, complaints, student):
     t = complaints.submit(student, "Fan", "room 5", "Infrastructure").ticket_id
     complaints.update_status(t, "In Progress", gm)
     complaints.update_status(t, "Resolved", gm)
-    complaints.request_close(t, gm)
+    complaints.request_close(t, gm, "fixed")
     reopened = complaints.update_status(t, "In Progress", gm, "still not working")
     assert not reopened.close_requested and reopened.resolved_at is None
 
@@ -147,14 +148,16 @@ def test_admin_needs_close_request_unless_forced(users, complaints, student):
     complaints.update_status(t, "Resolved", gm)
     with pytest.raises(DomainError):
         complaints.admin_close(t, admin)
-    closed = complaints.admin_close(t, admin, force=True)
+    with pytest.raises(InvalidInputError):
+        complaints.admin_close(t, admin, force=True)              # a reason is required
+    closed = complaints.admin_close(t, admin, force=True, reason="manager on leave, checked myself")
     assert closed.history[-1].action == "Admin Force Closed"
 
 
 def test_request_close_only_when_resolved(users, complaints, student):
     t = complaints.submit(student, "Fan", "room 5", "Infrastructure").ticket_id
     with pytest.raises(InvalidTransitionError):
-        complaints.request_close(t, staff(users, "GM002"))
+        complaints.request_close(t, staff(users, "GM002"), "done")
 
 
 def test_stats(users, complaints, student):

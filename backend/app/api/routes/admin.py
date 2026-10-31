@@ -4,8 +4,9 @@ from fastapi import APIRouter, BackgroundTasks, Query
 
 from backend.app.core.deps import DB, Admin, Sender
 from backend.app.core.enums import Role
-from backend.app.schemas.complaint import AdminCloseIn, ComplaintOut, ManagerUpdateOut, Page
-from backend.app.schemas.user import UserOut
+from backend.app.schemas.complaint import (AdminCloseIn, AdminMessageIn, ComplaintOut, ManagerUpdateOut,
+                                           Page)
+from backend.app.schemas.user import MessageOut, UserOut
 from backend.app.services.complaint_service import ComplaintService
 from backend.app.services.email_service import status_change_mail
 from backend.app.services.sla_service import SlaService
@@ -49,7 +50,19 @@ def manager_updates(db: DB, _: Admin, page: PageNo = 1, page_size: PageSize = 20
 @router.post("/complaints/{ticket_id}/close", response_model=ComplaintOut)
 def close(ticket_id: str, body: AdminCloseIn, db: DB, admin: Admin,
           sender: Sender, background: BackgroundTasks):
-    complaint = ComplaintService(db).admin_close(ticket_id, admin, force=body.force)
+    complaint = ComplaintService(db).admin_close(ticket_id, admin, force=body.force, reason=body.reason)
     background.add_task(status_change_mail, sender, complaint.student.email,
                         complaint.ticket_id, complaint.status.value, None)
     return ComplaintOut.of(complaint)
+
+
+@router.post("/complaints/{ticket_id}/message", response_model=MessageOut)
+def message_manager(ticket_id: str, body: AdminMessageIn, db: DB, admin: Admin):
+    ComplaintService(db).admin_message(ticket_id, admin, body.text)
+    return MessageOut(message="Message sent to the manager.")
+
+
+@router.get("/quality")
+def quality(db: DB, _: Admin):
+    """dispute rate and student ratings per manager and category"""
+    return ComplaintService(db).quality_metrics()

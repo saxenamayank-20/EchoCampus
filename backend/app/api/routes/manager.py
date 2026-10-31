@@ -2,7 +2,8 @@ from fastapi import APIRouter, BackgroundTasks, status
 
 from backend.app.core.deps import DB, Manager, Sender
 from backend.app.core.enums import Role, Status
-from backend.app.schemas.complaint import ComplaintOut, ManagerUpdateIn, StatusUpdateIn
+from backend.app.core.config import settings
+from backend.app.schemas.complaint import CloseRequestIn, ComplaintOut, ManagerUpdateIn, StatusUpdateIn
 from backend.app.schemas.user import MessageOut
 from backend.app.services.complaint_service import ComplaintService
 from backend.app.services.email_service import status_change_mail
@@ -29,8 +30,16 @@ def update_status(ticket_id: str, body: StatusUpdateIn, db: DB, manager: Manager
 
 
 @router.post("/{ticket_id}/close-request", response_model=ComplaintOut)
-def request_close(ticket_id: str, db: DB, manager: Manager):
-    return ComplaintOut.of(ComplaintService(db).request_close(ticket_id, manager))
+def request_close(ticket_id: str, body: CloseRequestIn, db: DB, manager: Manager,
+                  sender: Sender, background: BackgroundTasks):
+    complaint = ComplaintService(db).request_close(ticket_id, manager, body.note)
+    # the link only opens the portal, answering still needs a login
+    background.add_task(sender.send, complaint.student.email,
+                        f"EchoCampus: was {complaint.ticket_id} fixed?",
+                        f"Your complaint {complaint.ticket_id} was marked resolved.\n"
+                        f"Manager's note: {body.note}\n\nWas it really fixed? Log in to answer within "
+                        f"{settings.confirmation_window_days} days: {settings.frontend_origin}/tickets/{complaint.ticket_id}")
+    return ComplaintOut.of(complaint)
 
 
 @router.post("/{ticket_id}/updates", response_model=MessageOut, status_code=status.HTTP_201_CREATED)

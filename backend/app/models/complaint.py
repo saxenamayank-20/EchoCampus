@@ -43,6 +43,12 @@ class Complaint(Base):
     manager: Mapped[User | None] = relationship(foreign_keys=[assigned_to])
     history: Mapped[list["ComplaintHistory"]] = relationship(
         back_populates="complaint", order_by="ComplaintHistory.id")
+    confirmations: Mapped[list["ClosureConfirmation"]] = relationship(  # noqa: F821
+        back_populates="complaint", order_by="ClosureConfirmation.id")
+
+    @property
+    def latest_confirmation(self):
+        return self.confirmations[-1] if self.confirmations else None
 
     def __repr__(self) -> str:
         return f"<Complaint {self.ticket_id} {self.status}>"

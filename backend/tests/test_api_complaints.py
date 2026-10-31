@@ -61,7 +61,8 @@ def test_full_flow_with_status_mail(client, mailbox):
     assert client.post(f"/manager/complaints/{t}/updates", json={"text": "done"}, headers=gm).status_code == 201
 
     assert client.post(f"/admin/complaints/{t}/close", json={}, headers=admin).status_code == 400
-    client.post(f"/manager/complaints/{t}/close-request", headers=gm)
+    client.post(f"/manager/complaints/{t}/close-request", json={"note": "fixed"}, headers=gm)
+    client.post(f"/complaints/{t}/confirm", json={"fixed": True, "rating": 4}, headers=h)
     r = client.post(f"/admin/complaints/{t}/close", json={}, headers=admin)
     assert r.status_code == 200 and r.json()["status"] == "Closed"
 

@@ -12,7 +12,7 @@ class StatusMachine:
         (Status.PENDING, Status.ASSIGNED): {SYSTEM},
         (Status.ASSIGNED, Status.IN_PROGRESS): {Role.MANAGER},
         (Status.IN_PROGRESS, Status.RESOLVED): {Role.MANAGER},
-        (Status.RESOLVED, Status.IN_PROGRESS): {Role.MANAGER},   # reopen
+        (Status.RESOLVED, Status.IN_PROGRESS): {Role.MANAGER, SYSTEM},   # reopen (system = student disputed)
         (Status.RESOLVED, Status.CLOSED): {Role.ADMIN},
     }
 
