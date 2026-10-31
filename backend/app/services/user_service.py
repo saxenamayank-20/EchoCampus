@@ -1,3 +1,4 @@
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from backend.app.core.config import settings
@@ -5,6 +6,7 @@ from backend.app.core.constants import STUDENT_ID_PREFIX, STUDENT_ID_START
 from backend.app.core.enums import Role
 from backend.app.core.security import hash_password, validate_password, verify_password
 from backend.app.models import User
+from backend.app.models.user import STUDENT_ID_SEQ
 from backend.app.repositories.user_repository import UserRepository
 from backend.app.services.errors import (AuthenticationError, ConflictError, InvalidInputError,
                                          NotVerifiedError)
@@ -16,7 +18,11 @@ class UserService:
         self.users = UserRepository(db)
 
     def next_student_id(self) -> str:
-        """ST000101, ST000102 ... (max + 1 is fine on sqlite, phase 3 moves this to a postgres sequence)"""
+        """ST000101, ST000102 ..."""
+        if self.db.get_bind().dialect.name == "postgresql":
+            # the sequence hands out each number once, even if two students register at the same moment
+            return f"{STUDENT_ID_PREFIX}{self.db.scalar(select(STUDENT_ID_SEQ.next_value())):06d}"
+        # sqlite (tests) has no sequences, max + 1 is fine there
         numbers = [int(uid[len(STUDENT_ID_PREFIX):]) for uid in self.users.student_user_ids()
                    if uid[len(STUDENT_ID_PREFIX):].isdigit()]
         next_number = max(numbers, default=STUDENT_ID_START - 1) + 1

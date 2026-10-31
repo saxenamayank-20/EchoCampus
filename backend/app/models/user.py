@@ -1,10 +1,14 @@
 from datetime import datetime
 
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import ForeignKey, Sequence, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.app.core.enums import Role
 from backend.app.db.base import Base, enum_column, now
+
+
+# postgres counter for student numbers (ST000101 ...). safe when two students register at once
+STUDENT_ID_SEQ = Sequence("student_id_seq", start=101, metadata=Base.metadata)
 
 
 class User(Base):

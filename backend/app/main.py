@@ -1,6 +1,8 @@
 """EchoCampus API.
 
-Run from the repo root:  uvicorn backend.app.main:app --reload --port 8000
+Run from the repo root:
+    alembic upgrade head                              # create / update the tables
+    uvicorn backend.app.main:app --reload --port 8000
 Swagger docs are at /docs
 """
 from contextlib import asynccontextmanager
@@ -12,7 +14,9 @@ from backend.app.api.errors import register_error_handlers
 from backend.app.api.routes import admin, attachments, auth, complaints, manager, meta
 from backend.app.core.config import settings
 from backend.app.db.seed import seed_staff
-from backend.app.db.session import SessionLocal, init_db
+from sqlalchemy.exc import SQLAlchemyError
+
+from backend.app.db.session import SessionLocal
 
 
 def create_app(run_startup: bool = True) -> FastAPI:
@@ -21,9 +25,12 @@ def create_app(run_startup: bool = True) -> FastAPI:
     @asynccontextmanager
     async def lifespan(_: FastAPI):
         if run_startup:
-            init_db()
-            with SessionLocal() as db:
-                seed_staff(db, settings.seed_passwords())
+            # tables come from alembic (alembic upgrade head), here we only add missing staff accounts
+            try:
+                with SessionLocal() as db:
+                    seed_staff(db, settings.seed_passwords())
+            except SQLAlchemyError as e:
+                print(f"[STARTUP] couldn't seed staff, did you run 'alembic upgrade head'? ({type(e).__name__})")
         yield
 
     app = FastAPI(title="EchoCampus API", version="0.2.0", lifespan=lifespan)
