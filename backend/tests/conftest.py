@@ -4,6 +4,8 @@ import re
 # tests must never touch the real db from .env (env vars beat .env), set before the app is imported
 os.environ["DATABASE_URL"] = "sqlite://"
 os.environ["SMTP_HOST"] = ""
+os.environ["REDIS_URL"] = ""        # in-memory cache in tests
+os.environ["RUN_SCHEDULER"] = "false"
 
 import bcrypt  # noqa: E402
 import pytest  # noqa: E402
@@ -25,6 +27,16 @@ def fast_bcrypt(monkeypatch):
     # bcrypt is slow on purpose, the lowest cost keeps tests quick
     real_gensalt = bcrypt.gensalt
     monkeypatch.setattr(bcrypt, "gensalt", lambda: real_gensalt(rounds=4))
+
+
+@pytest.fixture(autouse=True)
+def clean_cache_and_limits(monkeypatch):
+    """every test starts with an empty cache, and limits high enough not to get in the way"""
+    from backend.app.core.cache import get_cache
+    from backend.app.core.config import settings
+    get_cache().clear()
+    monkeypatch.setattr(settings, "rate_limit_complaints_per_hour", 1000)
+    monkeypatch.setattr(settings, "rate_limit_logins_per_15_min", 1000)
 
 
 @pytest.fixture

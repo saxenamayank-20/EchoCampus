@@ -8,6 +8,7 @@ from backend.app.schemas.complaint import AdminCloseIn, ComplaintOut, ManagerUpd
 from backend.app.schemas.user import UserOut
 from backend.app.services.complaint_service import ComplaintService
 from backend.app.services.email_service import status_change_mail
+from backend.app.services.sla_service import SlaService
 from backend.app.services.user_service import UserService
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -18,9 +19,15 @@ PageSize = Annotated[int, Query(ge=1, le=100)]
 
 @router.get("/stats")
 def stats(db: DB, _: Admin):
-    """card numbers + chart data for the overview"""
-    service = ComplaintService(db)
-    return {"counts": service.stats(), **service.chart_stats()}
+    """card numbers + chart data for the overview (cached 60 s)"""
+    return ComplaintService(db).dashboard()
+
+
+@router.post("/sla/run")
+def run_sla_check(db: DB, _: Admin, sender: Sender):
+    """same job the scheduler runs every 15 minutes, on demand"""
+    escalated = SlaService(db, sender).escalate_overdue()
+    return {"escalated": [c.ticket_id for c in escalated]}
 
 
 @router.get("/users", response_model=Page[UserOut])

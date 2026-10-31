@@ -6,6 +6,7 @@ import {
 import { useAuth } from "../auth/AuthContext";
 import { roleLabel } from "../lib/format";
 import { useTheme } from "../lib/theme";
+import NotificationBell from "./NotificationBell";
 
 const NAV = {
   student: [
@@ -41,7 +42,8 @@ function Sidebar({ onNavigate }) {
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-2 px-5 py-5">
         <img src="/favicon.svg" alt="" className="h-8 w-8" />
-        <span className="text-lg font-semibold">EchoCampus</span>
+        <span className="flex-1 text-lg font-semibold">EchoCampus</span>
+        {!onNavigate && <NotificationBell />}
       </div>
 
       <nav className="flex-1 space-y-1 px-3">
@@ -96,9 +98,12 @@ export default function Layout() {
       {/* mobile top bar + slide-in menu */}
       <header className="sticky top-0 z-30 flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900 lg:hidden">
         <span className="font-semibold">EchoCampus</span>
-        <button onClick={() => setOpen(true)} aria-label="Open menu" className="btn-secondary px-2.5 py-1.5">
-          <Menu size={18} />
-        </button>
+        <div className="flex items-center gap-2">
+          <NotificationBell />
+          <button onClick={() => setOpen(true)} aria-label="Open menu" className="btn-secondary px-2.5 py-1.5">
+            <Menu size={18} />
+          </button>
+        </div>
       </header>
       {open && (
         <div className="fixed inset-0 z-40 lg:hidden">

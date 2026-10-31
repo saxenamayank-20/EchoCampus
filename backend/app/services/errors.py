@@ -36,3 +36,7 @@ class TooLargeError(DomainError):
 
 class UnsupportedFileError(DomainError):
     """file type we don't accept"""
+
+
+class RateLimitError(DomainError):
+    """too many requests in a short time"""

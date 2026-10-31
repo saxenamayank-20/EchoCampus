@@ -96,6 +96,7 @@ export default function ComplaintTable({ fixed = {}, statusOptions = [], showStu
                   <td className="max-w-[16rem] truncate px-4 py-3">
                     <Link to={`/tickets/${c.ticket_id}`} className="hover:underline">{c.title}</Link>
                     {c.close_requested && <span className="ml-2 text-xs text-amber-600">· close requested</span>}
+                    {c.escalated && !["Resolved", "Closed"].includes(c.status) && <span className="ml-2 text-xs font-medium text-red-600">· overdue</span>}
                   </td>
                   <td className="hidden px-4 py-3 md:table-cell">{c.category}</td>
                   <td className="px-4 py-3"><PriorityBadge priority={c.priority} /></td>

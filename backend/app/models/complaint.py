@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import ForeignKey, Index, String, Text
+from sqlalchemy import ForeignKey, Index, String, Text, false
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.app.core.enums import Priority, Status
@@ -32,6 +32,11 @@ class Complaint(Base):
     created_at: Mapped[datetime] = mapped_column(default=now)
     updated_at: Mapped[datetime] = mapped_column(default=now, onupdate=now)
     resolved_at: Mapped[datetime | None]
+
+    # sla: when it should be done by, and whether the 15 min job already escalated it
+    sla_due_at: Mapped[datetime | None]
+    escalated: Mapped[bool] = mapped_column(default=False, server_default=false())
+    escalated_at: Mapped[datetime | None]
 
     # names and emails come from these joins, not copied into this table
     student: Mapped[User] = relationship(foreign_keys=[student_id])

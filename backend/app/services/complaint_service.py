@@ -1,3 +1,4 @@
+import json
 import random
 import string
 from collections import Counter
@@ -5,7 +6,10 @@ from datetime import timedelta
 
 from sqlalchemy.orm import Session
 
+from backend.app.core.cache import get_cache
+from backend.app.core.config import settings
 from backend.app.core.constants import CATEGORIES, MANAGER_MEET_LINKS
+from backend.app.core.rate_limit import hit
 from backend.app.core.enums import Priority, Role, Status
 from backend.app.db.base import now
 from backend.app.models import Complaint, ComplaintHistory, ManagerUpdate, User
@@ -15,6 +19,10 @@ from backend.app.services.errors import (DomainError, InvalidInputError, Invalid
                                          NotFoundError, PermissionDeniedError)
 from backend.app.services.priority import KeywordPriorityDetector
 from backend.app.services.status_machine import SYSTEM, StatusMachine
+
+
+STATS_KEY = "admin:stats"
+STATS_TTL = 60   # seconds
 
 
 def generate_ticket_id() -> str:
@@ -43,11 +51,16 @@ class ComplaintService:
             raise InvalidInputError("Title and description are required.")
         if category not in CATEGORIES:
             raise InvalidInputError(f"Unknown category: {category}")
+        # stops spam: 5 complaints per student per hour by default
+        hit(f"submit:{student.id}", settings.rate_limit_complaints_per_hour, 3600)
 
         priority = self.detector.detect(title, description, category)
+        filed = now()   # one moment for both, so the sla is exactly N hours after filing
         complaint = Complaint(ticket_id=self._new_ticket_id(), student=student, title=title,
                               description=description, category=category, priority=priority,
-                              status=Status.PENDING, student_remarks=remarks.strip() or None)
+                              status=Status.PENDING, student_remarks=remarks.strip() or None,
+                              created_at=filed, updated_at=filed,
+                              sla_due_at=filed + timedelta(hours=settings.sla_hours(priority)))
         self.complaints.add(complaint)
         self._log(complaint, student, "Complaint Submitted", None, Status.PENDING,
                   f"Priority auto-detected: {priority}")
@@ -57,7 +70,7 @@ class ComplaintService:
         if manager:
             self._assign(complaint, manager)
 
-        self.db.commit()
+        self._commit()
         return complaint
 
     # ── manager side ──────────────────────────────────────────────────────────
@@ -83,7 +96,7 @@ class ComplaintService:
             complaint.manager_remarks = remark
             self._change_status(complaint, new_status, manager, "Status Updated", remark)
 
-        self.db.commit()
+        self._commit()
         return complaint
 
     def request_close(self, ticket_id: str, manager: User) -> Complaint:
@@ -95,7 +108,7 @@ class ComplaintService:
             complaint.close_requested = True
             self._log(complaint, manager, "Close Requested", None, None,
                       "Manager sent close request to Admin")
-            self.db.commit()
+            self._commit()
         return complaint
 
     def add_manager_update(self, ticket_id: str, manager: User, text: str) -> None:
@@ -105,7 +118,7 @@ class ComplaintService:
             raise InvalidInputError("Update message can't be empty.")
         self.complaints.add_manager_update(
             ManagerUpdate(complaint=complaint, manager=manager, update_text=text.strip()))
-        self.db.commit()
+        self._commit()
 
     # ── admin side ────────────────────────────────────────────────────────────
     def admin_close(self, ticket_id: str, admin: User, force: bool = False) -> Complaint:
@@ -125,7 +138,7 @@ class ComplaintService:
         else:
             self._change_status(complaint, Status.CLOSED, admin, "Admin Closed",
                                 "Complaint officially closed by Admin")
-        self.db.commit()
+        self._commit()
         return complaint
 
     # ── reading ───────────────────────────────────────────────────────────────
@@ -157,7 +170,18 @@ class ComplaintService:
         stats["Students"] = self.users.count(Role.STUDENT)
         stats["PendingClose"] = self.complaints.count_close_requested()
         stats["OpenCritical"] = self.complaints.count_open_critical()
+        stats["Overdue"] = self.complaints.count_escalated_open()
         return stats
+
+    def dashboard(self) -> dict:
+        """cards + charts for the admin overview, cached for 60 seconds"""
+        cache = get_cache()
+        cached = cache.get(STATS_KEY)
+        if cached:
+            return json.loads(cached)
+        data = {"counts": self.stats(), **self.chart_stats()}
+        cache.set(STATS_KEY, json.dumps(data), STATS_TTL)
+        return data
 
     def chart_stats(self, days: int = 30) -> dict:
         """numbers for the admin charts"""
@@ -174,6 +198,11 @@ class ComplaintService:
         }
 
     # ── helpers ───────────────────────────────────────────────────────────────
+    def _commit(self) -> None:
+        """save, then forget the cached admin numbers so the next request recounts"""
+        self.db.commit()
+        get_cache().delete(STATS_KEY)
+
     @staticmethod
     def _can_view(viewer: User, complaint: Complaint) -> bool:
         if viewer.role == Role.ADMIN:

@@ -213,6 +213,13 @@ export default function TicketDetail() {
               <Info label="Manager">{c.manager_name ?? "Not assigned yet"}</Info>
               <Info label="Filed">{formatDate(c.created_at)}</Info>
               <Info label="Last update">{formatDateTime(c.updated_at)}</Info>
+              {c.sla_due_at && !["Resolved", "Closed"].includes(c.status) && (
+                <Info label="Due by (SLA)">
+                  <span className={c.escalated ? "font-medium text-red-600" : ""}>
+                    {formatDateTime(c.sla_due_at)} {c.escalated && "· overdue"}
+                  </span>
+                </Info>
+              )}
             </dl>
             <p className="whitespace-pre-wrap rounded-lg bg-slate-50 p-3 text-sm dark:bg-slate-800/60">{c.description}</p>
             {c.student_remarks && <p className="mt-3 text-sm text-slate-500">Student remarks: {c.student_remarks}</p>}

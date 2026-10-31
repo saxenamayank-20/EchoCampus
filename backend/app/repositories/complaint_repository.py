@@ -22,6 +22,7 @@ class ComplaintFilters:
     date_to: date | None = None
     search: str | None = None    # matches ticket id or title
     close_requested: bool | None = None
+    escalated: bool | None = None
 
 
 class ComplaintRepository:
@@ -60,6 +61,8 @@ class ComplaintRepository:
             # date_to counts the whole day, so stop at the next midnight
             conditions.append(Complaint.created_at < datetime.combine(f.date_to + timedelta(days=1),
                                                                       datetime.min.time()))
+        if f.escalated is not None:
+            conditions.append(Complaint.escalated.is_(f.escalated))
         if f.close_requested is not None:
             conditions.append(Complaint.close_requested.is_(f.close_requested))
         if f.search:
@@ -97,6 +100,17 @@ class ComplaintRepository:
     def count_close_requested(self) -> int:
         return self.db.scalar(
             select(func.count()).select_from(Complaint).where(Complaint.close_requested.is_(True)))
+
+    def count_escalated_open(self) -> int:
+        return self.db.scalar(
+            select(func.count()).select_from(Complaint)
+            .where(Complaint.escalated.is_(True), Complaint.status.not_in(DONE)))
+
+    def overdue(self, at: datetime) -> list[Complaint]:
+        """still open, past the sla time, not escalated yet"""
+        return list(self.db.scalars(
+            select(Complaint).where(Complaint.status.not_in(DONE), Complaint.escalated.is_(False),
+                                    Complaint.sla_due_at < at)))
 
     def count_open_critical(self) -> int:
         return self.db.scalar(

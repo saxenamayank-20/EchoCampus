@@ -6,8 +6,8 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from backend.app.services.errors import (AuthenticationError, ConflictError, DomainError,
                                          InvalidInputError, InvalidTransitionError, NotFoundError,
-                                         NotVerifiedError, PermissionDeniedError, TooLargeError,
-                                         UnsupportedFileError)
+                                         NotVerifiedError, PermissionDeniedError, RateLimitError,
+                                         TooLargeError, UnsupportedFileError)
 
 # domain error -> (http status, short code the frontend can check)
 ERROR_MAP: dict[type[DomainError], tuple[int, str]] = {
@@ -20,10 +20,12 @@ ERROR_MAP: dict[type[DomainError], tuple[int, str]] = {
     TooLargeError: (413, "too_large"),
     UnsupportedFileError: (415, "unsupported_type"),
     InvalidInputError: (422, "invalid_input"),
+    RateLimitError: (429, "rate_limited"),
 }
 
 HTTP_CODES = {400: "bad_request", 401: "unauthorized", 403: "forbidden", 404: "not_found",
-              405: "method_not_allowed", 409: "conflict", 413: "too_large", 415: "unsupported_type", 422: "invalid_input"}
+              405: "method_not_allowed", 409: "conflict", 413: "too_large", 415: "unsupported_type", 422: "invalid_input",
+              429: "rate_limited"}
 
 
 def error_body(code: str, message: str, details=None) -> dict:

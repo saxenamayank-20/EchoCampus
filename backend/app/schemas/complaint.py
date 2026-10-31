@@ -44,6 +44,8 @@ class ComplaintOut(BaseModel):
     created_at: datetime
     updated_at: datetime
     resolved_at: datetime | None
+    sla_due_at: datetime | None
+    escalated: bool
 
     @classmethod
     def of(cls, c: Complaint) -> "ComplaintOut":
@@ -55,7 +57,8 @@ class ComplaintOut(BaseModel):
             manager_name=c.manager.name if c.manager else None,
             student_remarks=c.student_remarks, manager_remarks=c.manager_remarks,
             meet_link=c.meet_link, close_requested=c.close_requested,
-            created_at=c.created_at, updated_at=c.updated_at, resolved_at=c.resolved_at)
+            created_at=c.created_at, updated_at=c.updated_at, resolved_at=c.resolved_at,
+            sla_due_at=c.sla_due_at, escalated=c.escalated)
 
 
 class HistoryOut(BaseModel):

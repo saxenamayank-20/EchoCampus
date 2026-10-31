@@ -1,11 +1,14 @@
-import { useQuery } from "@tanstack/react-query";
-import { Bell, CheckCircle2, Clock, Flame, Hourglass, LayoutList } from "lucide-react";
+import { Link } from "react-router-dom";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { AlarmClock, Bell, CheckCircle2, Clock, Flame, Hourglass, LayoutList, RefreshCw } from "lucide-react";
 import {
   Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
 import { api } from "../../api/client";
-import { ErrorBox, PageHeader, Skeleton, StatCard } from "../../components/Feedback";
-import { PRIORITIES, STATUSES } from "../../lib/format";
+import { PriorityBadge, StatusBadge } from "../../components/Badges";
+import { EmptyState, ErrorBox, PageHeader, Skeleton, StatCard } from "../../components/Feedback";
+import { useToast } from "../../components/Toast";
+import { PRIORITIES, STATUSES, formatDateTime } from "../../lib/format";
 
 const STATUS_COLORS = { Pending: "#94a3b8", Assigned: "#3b82f6", "In Progress": "#f59e0b", Resolved: "#10b981", Closed: "#64748b" };
 const PRIORITY_COLORS = { Critical: "#dc2626", High: "#f97316", Medium: "#eab308", Low: "#22c55e" };
@@ -20,6 +23,51 @@ function ChartCard({ title, children }) {
 }
 
 const tooltipStyle = { contentStyle: { borderRadius: 8, fontSize: 12 } };
+
+// complaints past their sla time, plus a button to run the 15 min check right now
+function OverdueList() {
+  const toast = useToast();
+  const queryClient = useQueryClient();
+  const params = { escalated: true, status: ["Pending", "Assigned", "In Progress"], page_size: 20 };
+  const { data } = useQuery({ queryKey: ["complaints", "overdue", params], queryFn: () => api("/complaints", { params }) });
+  const run = useMutation({
+    mutationFn: () => api("/admin/sla/run", { method: "POST" }),
+    onSuccess: (r) => {
+      toast.info(r.escalated.length ? `${r.escalated.length} complaint(s) escalated.` : "Nothing new is overdue.");
+      queryClient.invalidateQueries({ queryKey: ["complaints"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  return (
+    <div className="card mb-6 overflow-hidden">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-5 py-3 dark:border-slate-800">
+        <h2 className="flex items-center gap-2 text-sm font-semibold"><AlarmClock size={16} className="text-red-500" /> Overdue (past SLA)</h2>
+        <button className="btn-secondary px-3 py-1.5 text-xs" onClick={() => run.mutate()} disabled={run.isPending}>
+          <RefreshCw size={14} className={run.isPending ? "animate-spin" : ""} /> Run SLA check
+        </button>
+      </div>
+      {!data?.items.length ? (
+        <EmptyState title="Nothing overdue" text="Every open complaint is inside its time limit." />
+      ) : (
+        <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+          {data.items.map((c) => (
+            <li key={c.ticket_id}>
+              <Link to={`/tickets/${c.ticket_id}`} className="flex flex-wrap items-center gap-2 px-5 py-3 text-sm hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                <span className="font-mono text-xs text-indigo-600">{c.ticket_id}</span>
+                <span className="min-w-0 flex-1 truncate">{c.title}</span>
+                <PriorityBadge priority={c.priority} /> <StatusBadge status={c.status} />
+                <span className="text-xs text-red-600">due {formatDateTime(c.sla_due_at)}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
 
 export default function Overview() {
   const { data, isLoading, error } = useQuery({ queryKey: ["admin-stats"], queryFn: () => api("/admin/stats") });
@@ -36,14 +84,17 @@ export default function Overview() {
   return (
     <div>
       <PageHeader title="Overview" subtitle="How complaints are moving across campus" />
-      <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+      <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7">
         <StatCard label="Total" value={counts.Total} icon={LayoutList} tone="indigo" />
         <StatCard label="Pending" value={counts.Pending} icon={Hourglass} />
         <StatCard label="In progress" value={counts["In Progress"]} icon={Clock} tone="amber" />
         <StatCard label="Resolved" value={counts.Resolved} icon={CheckCircle2} tone="green" />
         <StatCard label="Close requests" value={counts.PendingClose} icon={Bell} tone="amber" />
         <StatCard label="Open critical" value={counts.OpenCritical} icon={Flame} tone="red" />
+        <StatCard label="Overdue (SLA)" value={counts.Overdue} icon={AlarmClock} tone="red" />
       </div>
+
+      <OverdueList />
 
       {isLoading ? (
         <div className="grid gap-5 lg:grid-cols-2">

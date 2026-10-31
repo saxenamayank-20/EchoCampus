@@ -38,6 +38,22 @@ class Settings(BaseSettings):
     max_upload_mb: int = 5
     max_files_per_complaint: int = 5
 
+    # redis cache + rate limits. no redis url = an in-memory cache inside the app (fine for one server)
+    redis_url: str = ""
+    rate_limit_complaints_per_hour: int = 5
+    rate_limit_logins_per_15_min: int = 10
+
+    # sla: hours a complaint may stay open before it is escalated
+    sla_hours_critical: int = 4
+    sla_hours_high: int = 48
+    sla_hours_medium: int = 72
+    sla_hours_low: int = 168
+    run_scheduler: bool = True   # the 15 minute background job
+
+    def sla_hours(self, priority: str) -> int:
+        return {"Critical": self.sla_hours_critical, "High": self.sla_hours_high,
+                "Medium": self.sla_hours_medium}.get(str(priority), self.sla_hours_low)
+
     def seed_passwords(self) -> dict[str, str]:
         """staff user_id -> password from .env"""
         return {
