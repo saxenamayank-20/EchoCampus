@@ -4,7 +4,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from backend.app.services.errors import (AuthenticationError, ConflictError, DomainError,
+from backend.app.services.errors import (AIUnavailableError, AuthenticationError, ConflictError, DomainError,
                                          InvalidInputError, InvalidTransitionError, NotFoundError,
                                          NotVerifiedError, PermissionDeniedError, RateLimitError,
                                          TooLargeError, UnsupportedFileError)
@@ -21,11 +21,12 @@ ERROR_MAP: dict[type[DomainError], tuple[int, str]] = {
     UnsupportedFileError: (415, "unsupported_type"),
     InvalidInputError: (422, "invalid_input"),
     RateLimitError: (429, "rate_limited"),
+    AIUnavailableError: (503, "ai_unavailable"),
 }
 
 HTTP_CODES = {400: "bad_request", 401: "unauthorized", 403: "forbidden", 404: "not_found",
               405: "method_not_allowed", 409: "conflict", 413: "too_large", 415: "unsupported_type", 422: "invalid_input",
-              429: "rate_limited"}
+              429: "rate_limited", 503: "unavailable"}
 
 
 def error_body(code: str, message: str, details=None) -> dict:

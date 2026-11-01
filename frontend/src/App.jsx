@@ -8,7 +8,9 @@ import { AllComplaints, CloseRequests, ManagerUpdates, UsersPage } from "./pages
 import { LoginPage, NotFoundPage, RegisterPage, VerifyOtpPage } from "./pages/AuthPages";
 import Queue from "./pages/manager/Queue";
 import MyTickets from "./pages/student/MyTickets";
+import Assistant from "./pages/student/Assistant";
 import NewComplaint from "./pages/student/NewComplaint";
+import Policies from "./pages/admin/Policies";
 import TicketDetail from "./pages/TicketDetail";
 
 // charts library is big, only load it when the admin opens the overview
@@ -35,6 +37,7 @@ export default function App() {
           <Route element={<RequireRole roles={["student"]} />}>
             <Route path="/student/new" element={<NewComplaint />} />
             <Route path="/student/tickets" element={<MyTickets />} />
+            <Route path="/student/assistant" element={<Assistant />} />
           </Route>
 
           <Route element={<RequireRole roles={["grievance_manager"]} />}>
@@ -47,6 +50,7 @@ export default function App() {
             <Route path="/admin/close-requests" element={<CloseRequests />} />
             <Route path="/admin/updates" element={<ManagerUpdates />} />
             <Route path="/admin/users" element={<UsersPage />} />
+            <Route path="/admin/policies" element={<Policies />} />
           </Route>
 
           <Route path="*" element={<NotFoundPage />} />

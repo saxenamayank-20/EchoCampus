@@ -61,12 +61,13 @@ class Settings(BaseSettings):
     llm_model: str = "gemini-3.5-flash-lite"
     embedding_model: str = "gemini-embedding-2"
     embedding_dim: int = 768        # fixed in the database column, changing it needs a migration
-    llm_max_rpm: int = 8            # stay under the free tier per-minute limit
+    llm_max_rpm: int = 8            # text model calls per minute, under the free tier limit
+    embed_max_rpm: int = 30         # embedding calls per minute (a separate model with its own limit)
     llm_timeout_seconds: int = 20
     duplicate_threshold: float = 0.85
     rag_min_similarity: float = 0.45   # below this, the policy search says "not in the documents"
     ai_requests_per_hour: int = 20     # per user, for preview / assistant / reply drafts
-    counsellor_contact: str = "Campus counsellor: Student Wellness Centre, Admin Block, Room 12 (Mon-Sat, 9am-5pm)"
+    counsellor_contact: str = "Student counselling (free, confidential): counsellor@echocampus.example, Student Welfare Office"
     crisis_helpline: str = "Tele-MANAS 14416 (free, 24x7)"
 
     def sla_hours(self, priority: str) -> int:

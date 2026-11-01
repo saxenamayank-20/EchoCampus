@@ -15,7 +15,8 @@ class Answer(BaseModel):
 class FakeSDK:
     """looks like google-genai's client: .models.generate_content / .models.embed_content"""
 
-    def __init__(self, generate_results=(), embed_dim=4):
+    def __init__(self, generate_results=(), embed_dim=4, join_strings=False):
+        self.join_strings = join_strings
         self.generate_results = list(generate_results)   # each: exception to raise, or response text
         self.embed_calls: list[list[str]] = []
         self.embed_dim = embed_dim
@@ -29,8 +30,11 @@ class FakeSDK:
         return SimpleNamespace(text=result, usage_metadata=usage)
 
     def embed_content(self, model, contents, config):
-        self.embed_calls.append(list(contents))
-        return SimpleNamespace(embeddings=[SimpleNamespace(values=[float(len(t))] * self.embed_dim) for t in contents])
+        texts = [c.parts[0].text for c in contents]      # one Content per text, like the real api needs
+        self.embed_calls.append(texts)
+        if self.join_strings:                            # what gemini-embedding-2 does with a plain list
+            texts = texts[:1]
+        return SimpleNamespace(embeddings=[SimpleNamespace(values=[float(len(t))] * self.embed_dim) for t in texts])
 
 
 def too_many():
@@ -103,3 +107,17 @@ def test_no_key_means_disabled(monkeypatch):
     monkeypatch.setattr(settings, "gemini_api_key", "")
     assert isinstance(llm_client.get_llm(), llm_client.DisabledClient)
     monkeypatch.setattr(llm_client, "_client", None)
+
+
+def test_wrong_number_of_vectors_is_an_error(make):
+    client, logs = make(FakeSDK(join_strings=True))
+    with pytest.raises(LLMError):
+        client.embed("embedding", ["one", "two"])
+    assert logs[-1][1]["error"] == "wrong number of vectors"
+
+
+def test_text_and_embedding_calls_have_separate_limits(make):
+    sdk = FakeSDK(['{"category": "a"}'])
+    client, _ = make(sdk, rpm=1)          # only 1 text call per minute
+    client.embed("embedding", ["x"])      # doesn't use up the text model's slot
+    assert client.generate_json("triage", "p", Answer).category == "a"

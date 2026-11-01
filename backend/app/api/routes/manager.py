@@ -1,6 +1,8 @@
 from fastapi import APIRouter, BackgroundTasks, status
 
-from backend.app.core.deps import DB, Manager, Sender
+from backend.app.ai.reply_suggest import suggest_reply
+from backend.app.core.deps import DB, LLM, Manager, Sender
+from backend.app.core.rate_limit import hit
 from backend.app.core.enums import Role, Status
 from backend.app.core.config import settings
 from backend.app.schemas.complaint import (CloseRequestIn, ComplaintOut, ManagerUpdateIn, PriorityIn,
@@ -53,3 +55,14 @@ def post_update(ticket_id: str, body: ManagerUpdateIn, db: DB, manager: Manager)
 def set_priority(ticket_id: str, body: PriorityIn, db: DB, manager: Manager):
     """manager overrides the ai/keyword priority (saved as 'manual')"""
     return ComplaintOut.of(ComplaintService(db).override_priority(ticket_id, manager, body.priority))
+
+
+@router.post("/{ticket_id}/reply-suggestion")
+def reply_suggestion(ticket_id: str, db: DB, manager: Manager, llm: LLM):
+    """an ai draft based on similar fixed complaints. nothing is saved or sent: the manager edits it"""
+    hit(f"ai:{manager.id}", settings.ai_requests_per_hour, 3600)
+    service = ComplaintService(db)
+    complaint = service.get_for(manager, ticket_id)
+    result = suggest_reply(db, llm, complaint)
+    db.commit()     # only keeps the embedding if one was just made
+    return result

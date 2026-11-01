@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import {
-  BarChart3, CheckSquare, FilePlus2, Inbox, LayoutList, LogOut, Megaphone, Menu, Moon, Sun, Ticket, Users, X,
+  BarChart3, BookOpen, CheckSquare, FilePlus2, Inbox, LayoutList, LogOut, Megaphone, Menu, MessageCircleQuestion,
+  Moon, Sun, Ticket, Users, X,
 } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import { roleLabel } from "../lib/format";
@@ -12,6 +13,7 @@ const NAV = {
   student: [
     { to: "/student/new", label: "New complaint", icon: FilePlus2 },
     { to: "/student/tickets", label: "My tickets", icon: Ticket },
+    { to: "/student/assistant", label: "Ask a question", icon: MessageCircleQuestion },
   ],
   grievance_manager: [
     { to: "/manager/queue", label: "Active complaints", icon: Inbox, end: true },
@@ -23,6 +25,7 @@ const NAV = {
     { to: "/admin/close-requests", label: "Close requests", icon: CheckSquare },
     { to: "/admin/updates", label: "Manager updates", icon: Megaphone },
     { to: "/admin/users", label: "Users", icon: Users },
+    { to: "/admin/policies", label: "Policies", icon: BookOpen },
   ],
 };
 

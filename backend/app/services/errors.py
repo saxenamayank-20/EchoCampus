@@ -40,3 +40,7 @@ class UnsupportedFileError(DomainError):
 
 class RateLimitError(DomainError):
     """too many requests in a short time"""
+
+
+class AIUnavailableError(DomainError):
+    """a feature that only works with ai, and the ai is down right now"""

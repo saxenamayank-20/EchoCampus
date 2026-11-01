@@ -11,7 +11,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.api.errors import register_error_handlers
-from backend.app.api.routes import admin, attachments, auth, complaints, manager, meta, notifications
+from backend.app.api.routes import (admin, attachments, auth, complaints, manager, meta, notifications,
+                                    policies)
 from backend.app.core.config import settings
 from backend.app.db.seed import seed_staff
 from sqlalchemy.exc import SQLAlchemyError
@@ -44,7 +45,7 @@ def create_app(run_startup: bool = True) -> FastAPI:
                        allow_methods=["*"], allow_headers=["Authorization", "Content-Type"])
     register_error_handlers(app)
 
-    for module in (auth, complaints, attachments, manager, admin, notifications, meta):
+    for module in (auth, complaints, attachments, manager, admin, notifications, policies, meta):
         app.include_router(module.router)
     return app
 

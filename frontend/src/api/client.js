@@ -65,6 +65,16 @@ export async function api(path, { method = "GET", body, params } = {}) {
   return res.status === 204 ? null : res.json();
 }
 
+// form uploads (files + fields), same token and error handling as api()
+export async function apiForm(path, form, method = "POST") {
+  const res = await fetch(API_URL + path, { method, headers: authHeaders(), body: form });
+  if (!res.ok) {
+    handle401(res, path);
+    throw await toError(res);
+  }
+  return res.json();
+}
+
 // fetch can't report upload progress, XMLHttpRequest can
 export function uploadFile(ticketId, file, onProgress) {
   return new Promise((resolve, reject) => {

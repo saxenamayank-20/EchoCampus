@@ -52,6 +52,12 @@ function ManagerPanel({ complaint }) {
   const [update, setUpdate] = useState("");
 
   const onError = (e) => toast.error(e.message);
+  const [draftInfo, setDraftInfo] = useState(null);
+  const suggest = useMutation({
+    mutationFn: () => api(`/manager/complaints/${t}/reply-suggestion`, { method: "POST" }),
+    onSuccess: (r) => { setRemark(r.draft); setDraftInfo(r); },
+    onError,
+  });
   const save = useMutation({
     mutationFn: () => api(`/manager/complaints/${t}/status`, { method: "POST", body: { status, remark } }),
     onSuccess: () => { toast.success("Saved. The student was emailed."); refresh(); },
@@ -82,8 +88,21 @@ function ManagerPanel({ complaint }) {
             </select>
           </div>
           <div>
-            <label className="label" htmlFor="rm">Remark for the student</label>
-            <textarea id="rm" rows={3} className="input" value={remark} onChange={(e) => setRemark(e.target.value)} placeholder="What was done?" />
+            <div className="mb-1 flex items-center justify-between gap-2">
+              <label className="label mb-0" htmlFor="rm">Remark for the student</label>
+              <button type="button" className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:underline disabled:opacity-50"
+                disabled={suggest.isPending} onClick={() => suggest.mutate()}>
+                <Sparkles size={13} /> {suggest.isPending ? "Thinking…" : "Suggest a reply with AI"}
+              </button>
+            </div>
+            <textarea id="rm" rows={4} className="input" value={remark} onChange={(e) => setRemark(e.target.value)} placeholder="What was done?" />
+            {draftInfo && (
+              <div className="mt-2 rounded-lg bg-indigo-50/70 p-2.5 text-xs text-indigo-900 dark:bg-indigo-950/40 dark:text-indigo-200">
+                <p className="font-medium">AI draft, edit it before saving. Nothing is sent until you click Save.</p>
+                {draftInfo.steps.length > 0 && <ul className="ml-4 mt-1 list-disc">{draftInfo.steps.map((s) => <li key={s}>{s}</li>)}</ul>}
+                {draftInfo.based_on.length > 0 && <p className="mt-1">Based on: {draftInfo.based_on.map((b) => b.ticket_id).join(", ")}</p>}
+              </div>
+            )}
           </div>
           <button className="btn-primary" disabled={save.isPending}>{save.isPending ? "Saving…" : "Save"}</button>
         </form>

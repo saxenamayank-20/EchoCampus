@@ -4,7 +4,9 @@ from backend.app.models.complaint import Complaint, ComplaintHistory, ManagerUpd
 from backend.app.models.confirmation import ClosureConfirmation
 from backend.app.models.notification import Notification
 from backend.app.models.otp import EmailOtp
+from backend.app.models.policy import PolicyChunk, PolicyDocument
 from backend.app.models.user import ManagerCategory, User
 
 __all__ = ["User", "ManagerCategory", "Complaint", "ComplaintHistory", "ManagerUpdate",
-           "EmailOtp", "Attachment", "Notification", "ClosureConfirmation", "LLMCall", "ComplaintSupporter"]
+           "EmailOtp", "Attachment", "Notification", "ClosureConfirmation", "LLMCall", "ComplaintSupporter",
+           "PolicyDocument", "PolicyChunk"]

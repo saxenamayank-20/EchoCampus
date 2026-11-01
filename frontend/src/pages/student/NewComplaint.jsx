@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle } from "lucide-react";
 import { api, uploadFile } from "../../api/client";
@@ -23,7 +23,9 @@ export default function NewComplaint() {
   const navigate = useNavigate();
   const toast = useToast();
   const queryClient = useQueryClient();
-  const [form, setForm] = useState({ title: "", description: "", category: "", remarks: "" });
+  const location = useLocation();
+  // "raise a complaint" from the assistant passes the question as the title
+  const [form, setForm] = useState({ title: location.state?.title ?? "", description: "", category: "", remarks: "" });
   const [files, setFiles] = useState([]);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);

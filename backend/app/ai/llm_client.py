@@ -92,7 +92,7 @@ class GeminiClient(LLMClient):
     RETRIES = 3
 
     def __init__(self, api_key: str, model: str, embedding_model: str, dim: int, max_rpm: int,
-                 timeout_seconds: int, sdk_client=None, logger=log_call):
+                 timeout_seconds: int, sdk_client=None, logger=log_call, embed_max_rpm: int | None = None):
         from google import genai
         from google.genai import types
         self.types = types
@@ -101,14 +101,15 @@ class GeminiClient(LLMClient):
         self.model = model
         self.embedding_model = embedding_model
         self.dim = dim
-        self.throttle = Throttle(max_rpm)
+        # each model has its own google limit, so each gets its own throttle
+        self.throttles = {model: Throttle(max_rpm), embedding_model: Throttle(embed_max_rpm or max_rpm)}
         self.log = logger
 
     def _call(self, feature: str, model: str, fn):
         """throttle + retry with exponential backoff on 429 / 5xx, and log every attempt"""
         from google.genai import errors
         for attempt in range(self.RETRIES):
-            self.throttle.acquire()
+            self.throttles[model].acquire()
             started = time.monotonic()
             try:
                 response = fn()
@@ -156,8 +157,13 @@ class GeminiClient(LLMClient):
         for start in range(0, len(missing), EMBED_BATCH):
             batch = missing[start:start + EMBED_BATCH]
             config = self.types.EmbedContentConfig(output_dimensionality=self.dim)
+            # each text as its own Content: gemini-embedding-2 joins a plain list of strings into ONE vector
+            contents = [self.types.Content(parts=[self.types.Part(text=texts[i])]) for i in batch]
             response, started = self._call(feature, self.embedding_model, lambda: self.client.models.embed_content(
-                model=self.embedding_model, contents=[texts[i] for i in batch], config=config))
+                model=self.embedding_model, contents=contents, config=config))
+            if len(response.embeddings) != len(batch):
+                self.log(feature, self.embedding_model, started, False, error="wrong number of vectors")
+                raise LLMError("AI returned the wrong number of embeddings.")
             self.log(feature, self.embedding_model, started, True)
             for i, emb in zip(batch, response.embeddings):
                 found[i] = list(emb.values)
@@ -174,7 +180,8 @@ def get_llm() -> LLMClient:
     if _client is None:
         if settings.llm_provider == "gemini" and settings.gemini_api_key:
             _client = GeminiClient(settings.gemini_api_key, settings.llm_model, settings.embedding_model,
-                                   settings.embedding_dim, settings.llm_max_rpm, settings.llm_timeout_seconds)
+                                   settings.embedding_dim, settings.llm_max_rpm, settings.llm_timeout_seconds,
+                                   embed_max_rpm=settings.embed_max_rpm)
         else:
             _client = DisabledClient()
     return _client
