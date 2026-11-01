@@ -3,7 +3,8 @@ from fastapi import APIRouter, BackgroundTasks, status
 from backend.app.core.deps import DB, Manager, Sender
 from backend.app.core.enums import Role, Status
 from backend.app.core.config import settings
-from backend.app.schemas.complaint import CloseRequestIn, ComplaintOut, ManagerUpdateIn, StatusUpdateIn
+from backend.app.schemas.complaint import (CloseRequestIn, ComplaintOut, ManagerUpdateIn, PriorityIn,
+                                           StatusUpdateIn)
 from backend.app.schemas.user import MessageOut
 from backend.app.services.complaint_service import ComplaintService
 from backend.app.services.email_service import status_change_mail
@@ -46,3 +47,9 @@ def request_close(ticket_id: str, body: CloseRequestIn, db: DB, manager: Manager
 def post_update(ticket_id: str, body: ManagerUpdateIn, db: DB, manager: Manager):
     ComplaintService(db).add_manager_update(ticket_id, manager, body.text)
     return MessageOut(message="Update sent to the admin.")
+
+
+@router.post("/{ticket_id}/priority", response_model=ComplaintOut)
+def set_priority(ticket_id: str, body: PriorityIn, db: DB, manager: Manager):
+    """manager overrides the ai/keyword priority (saved as 'manual')"""
+    return ComplaintOut.of(ComplaintService(db).override_priority(ticket_id, manager, body.priority))

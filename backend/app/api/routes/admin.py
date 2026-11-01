@@ -5,7 +5,7 @@ from fastapi import APIRouter, BackgroundTasks, Query
 from backend.app.core.deps import DB, Admin, Sender
 from backend.app.core.enums import Role
 from backend.app.schemas.complaint import (AdminCloseIn, AdminMessageIn, ComplaintOut, ManagerUpdateOut,
-                                           Page)
+                                           MergeIn, Page)
 from backend.app.schemas.user import MessageOut, UserOut
 from backend.app.services.complaint_service import ComplaintService
 from backend.app.services.email_service import status_change_mail
@@ -66,3 +66,9 @@ def message_manager(ticket_id: str, body: AdminMessageIn, db: DB, admin: Admin):
 def quality(db: DB, _: Admin):
     """dispute rate and student ratings per manager and category"""
     return ComplaintService(db).quality_metrics()
+
+
+@router.post("/complaints/{ticket_id}/merge", response_model=ComplaintOut)
+def merge(ticket_id: str, body: MergeIn, db: DB, admin: Admin):
+    """ticket_id is a duplicate: close it and add its student as a supporter of `into`"""
+    return ComplaintOut.of(ComplaintService(db).merge(ticket_id, body.into.strip(), admin))

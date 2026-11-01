@@ -1,7 +1,10 @@
 from datetime import datetime
 
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import ForeignKey, Index, String, Text, false
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from backend.app.core.config import settings
 
 from backend.app.core.enums import Priority, Status
 from backend.app.db.base import Base, enum_column, now
@@ -38,6 +41,11 @@ class Complaint(Base):
     escalated: Mapped[bool] = mapped_column(default=False, server_default=false())
     escalated_at: Mapped[datetime | None]
 
+    # ai: short summary, the "meaning vector" of title + description, and merging duplicates
+    ai_summary: Mapped[str | None] = mapped_column(Text)
+    embedding = mapped_column(Vector(settings.embedding_dim), nullable=True)
+    duplicate_of: Mapped[int | None] = mapped_column(ForeignKey("complaints.id"))
+
     # names and emails come from these joins, not copied into this table
     student: Mapped[User] = relationship(foreign_keys=[student_id])
     manager: Mapped[User | None] = relationship(foreign_keys=[assigned_to])
@@ -45,6 +53,9 @@ class Complaint(Base):
         back_populates="complaint", order_by="ComplaintHistory.id")
     confirmations: Mapped[list["ClosureConfirmation"]] = relationship(  # noqa: F821
         back_populates="complaint", order_by="ClosureConfirmation.id")
+    supporters: Mapped[list["ComplaintSupporter"]] = relationship(  # noqa: F821
+        back_populates="complaint", order_by="ComplaintSupporter.id")
+    original: Mapped["Complaint | None"] = relationship(remote_side="Complaint.id")
 
     @property
     def latest_confirmation(self):

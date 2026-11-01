@@ -7,13 +7,18 @@ from datetime import timedelta
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from backend.app.ai.crisis import support_message
+from backend.app.ai.duplicates import embed_complaint, find_duplicates
+from backend.app.ai.llm_client import DisabledClient, LLMClient
+from backend.app.ai.triage import triage
 from backend.app.core.cache import get_cache
 from backend.app.core.config import settings
 from backend.app.core.constants import CATEGORIES, MANAGER_MEET_LINKS
 from backend.app.core.rate_limit import hit
 from backend.app.core.enums import Priority, Role, Status
 from backend.app.db.base import now
-from backend.app.models import ClosureConfirmation, Complaint, ComplaintHistory, ManagerUpdate, User
+from backend.app.models import (ClosureConfirmation, Complaint, ComplaintHistory, ComplaintSupporter,
+                                ManagerUpdate, User)
 from backend.app.models.confirmation import (AUTO_CONFIRMED, CONFIRMED, DISPUTED, PENDING,
                                              WITHDRAWN)
 from backend.app.repositories.complaint_repository import ComplaintFilters, ComplaintRepository
@@ -22,7 +27,7 @@ from backend.app.services.errors import (ConflictError, DomainError, InvalidInpu
                                          InvalidTransitionError, NotFoundError, PermissionDeniedError)
 from backend.app.services.notification_service import NotificationService
 from backend.app.services.priority import KeywordPriorityDetector
-from backend.app.services.status_machine import SYSTEM, StatusMachine
+from backend.app.services.status_machine import MERGE, SYSTEM, StatusMachine
 
 
 STATS_KEY = "admin:stats"
@@ -40,13 +45,14 @@ class ComplaintService:
     """all the complaint rules: routing, priority, status changes, history"""
 
     def __init__(self, db: Session, detector: KeywordPriorityDetector | None = None,
-                 machine: StatusMachine | None = None):
+                 machine: StatusMachine | None = None, llm: LLMClient | None = None):
         self.db = db
         self.users = UserRepository(db)
         self.complaints = ComplaintRepository(db)
         self.detector = detector or KeywordPriorityDetector()
         self.machine = machine or StatusMachine()
         self.notes = NotificationService(db)
+        self.llm = llm or DisabledClient()     # no ai given = keyword rules only
 
     # ── student side ──────────────────────────────────────────────────────────
     def submit(self, student: User, title: str, description: str, category: str,
@@ -59,16 +65,21 @@ class ComplaintService:
         # stops spam: 5 complaints per student per hour by default
         hit(f"submit:{student.id}", settings.rate_limit_complaints_per_hour, 3600)
 
-        priority = self.detector.detect(title, description, category)
+        # ai triage with the keyword safety floor (falls back to keywords if the ai is down)
+        t = triage(self.llm, title, description, category)
+        priority = t.priority
         filed = now()   # one moment for both, so the sla is exactly N hours after filing
         complaint = Complaint(ticket_id=self._new_ticket_id(), student=student, title=title,
                               description=description, category=category, priority=priority,
+                              priority_source=t.priority_source, ai_summary=t.summary,
                               status=Status.PENDING, student_remarks=remarks.strip() or None,
                               created_at=filed, updated_at=filed,
-                              sla_due_at=filed + timedelta(hours=settings.sla_hours(priority)))
+                              sla_due_at=filed + timedelta(hours=settings.sla_hours(priority)),
+                              embedding=embed_complaint(self.llm, title, description))
         self.complaints.add(complaint)
+        how = "AI + keyword check" if t.used_ai else "keyword check"
         self._log(complaint, student, "Complaint Submitted", None, Status.PENDING,
-                  f"Priority auto-detected: {priority}")
+                  f"Priority {priority} ({how})" + (" | crisis words found" if t.crisis else ""))
 
         # if that manager isn't seeded yet, it just stays pending
         manager = self.users.manager_for_category(category)
@@ -78,7 +89,72 @@ class ComplaintService:
         self._commit()
         return complaint
 
+    def preview(self, student: User, title: str, description: str, category: str) -> dict:
+        """before submitting: ai suggestion, crisis help and similar open complaints"""
+        hit(f"ai:{student.id}", settings.ai_requests_per_hour, 3600)
+        t = triage(self.llm, title.strip(), description.strip(), category)
+        vector = embed_complaint(self.llm, title, description)
+        duplicates = find_duplicates(self.db, vector, exclude_student_id=student.id)
+        return {"triage": t, "crisis": support_message() if t.crisis else None, "duplicates": duplicates}
+
+    # ── "i have this issue too" ──────────────────────────────────────────────
+    def support(self, ticket_id: str, student: User) -> Complaint:
+        complaint = self._get(ticket_id)
+        if complaint.student_id == student.id:
+            raise ConflictError("This is your own complaint.")
+        if complaint.status in (Status.RESOLVED, Status.CLOSED) or complaint.duplicate_of:
+            raise InvalidTransitionError("This complaint is no longer open.")
+        if any(s.student_id == student.id for s in complaint.supporters):
+            raise ConflictError("You already support this complaint.")
+        self.db.add(ComplaintSupporter(complaint=complaint, student=student))
+        affected = len(complaint.supporters) + 1   # the new supporter + the original student
+        self._log(complaint, student, "Supporter Added", None, None,
+                  f"Another student has the same issue ({affected} students affected)")
+        if complaint.manager:
+            self.notes.notify(complaint.manager, "supporter_added",
+                              f"{complaint.ticket_id}: {affected} students are affected now.", complaint)
+        self._commit()
+        return complaint
+
+    def supporter_comment(self, ticket_id: str, student: User, text: str) -> None:
+        """a supporter says 'still an issue for me', the admin sees it in the timeline"""
+        complaint = self._get(ticket_id)
+        if not any(s.student_id == student.id for s in complaint.supporters):
+            raise PermissionDeniedError("Only students who support this complaint can comment.")
+        if not text.strip():
+            raise InvalidInputError("Comment can't be empty.")
+        self._log(complaint, student, "Supporter Comment", None, None, text.strip())
+        self.notes.notify_many(self.users.list_users(Role.ADMIN), "supporter_comment",
+                               f"{complaint.ticket_id}: a supporting student says: {text.strip()[:150]}", complaint)
+        self._commit()
+
+    def supported_by(self, student: User) -> list[Complaint]:
+        return [s.complaint for s in self.db.scalars(
+            select(ComplaintSupporter).where(ComplaintSupporter.student_id == student.id)
+            .order_by(ComplaintSupporter.id.desc()))]
+
     # ── manager side ──────────────────────────────────────────────────────────
+    def override_priority(self, ticket_id: str, manager: User, priority: str) -> Complaint:
+        """manager knows better than the ai/keywords: priority_source becomes manual"""
+        complaint = self._get(ticket_id)
+        self._check_assigned_manager(complaint, manager)
+        try:
+            new = Priority(priority)
+        except ValueError:
+            raise InvalidInputError(f"Unknown priority: {priority}") from None
+        old = complaint.priority
+        if new == old:
+            return complaint
+        complaint.priority = new
+        complaint.priority_source = "manual"
+        complaint.sla_due_at = complaint.created_at + timedelta(hours=settings.sla_hours(new))
+        if complaint.sla_due_at > now():
+            complaint.escalated = False       # the new deadline isn't passed yet
+        self._log(complaint, manager, "Priority Changed", None, None, f"{old} -> {new} (set by manager)")
+        self._commit()
+        return complaint
+
+
     def update_status(self, ticket_id: str, new_status: str, manager: User,
                       remark: str = "") -> Complaint:
         complaint = self._get(ticket_id)
@@ -103,6 +179,8 @@ class ComplaintService:
                     last.student_response = WITHDRAWN
             complaint.manager_remarks = remark
             self._change_status(complaint, new_status, manager, "Status Updated", remark)
+            if new_status == Status.RESOLVED:
+                self._notify_supporters(complaint, f"{complaint.ticket_id} (which you supported) was marked resolved.")
 
         self._commit()
         return complaint
@@ -213,8 +291,34 @@ class ComplaintService:
         complaint.resolved_at = now()
         self._change_status(complaint, Status.CLOSED, admin, action, note)
         self.notes.notify(complaint.student, "closed", f"{complaint.ticket_id} was closed by the admin.", complaint)
+        self._notify_supporters(complaint, f"{complaint.ticket_id} (which you supported) was closed.")
         self._commit()
         return complaint
+
+    def merge(self, ticket_id: str, into_ticket_id: str, admin: User) -> Complaint:
+        """ticket_id is a duplicate of into_ticket_id: close it and move its people over as supporters"""
+        if admin.role != Role.ADMIN:
+            raise PermissionDeniedError("Only the admin can merge complaints.")
+        copy, target = self._get(ticket_id), self._get(into_ticket_id)
+        if copy.id == target.id:
+            raise InvalidInputError("A complaint can't be merged into itself.")
+        if target.status == Status.CLOSED or target.duplicate_of:
+            raise InvalidTransitionError("The target complaint is closed or merged already.")
+        self.machine.check(copy.status, Status.CLOSED, MERGE)
+
+        people = {copy.student_id: copy.student, **{s.student_id: s.student for s in copy.supporters}}
+        already = {target.student_id, *(s.student_id for s in target.supporters)}
+        for student_id, student in people.items():
+            if student_id not in already:
+                self.db.add(ComplaintSupporter(complaint=target, student=student))
+        copy.duplicate_of = target.id
+        copy.close_requested = False
+        self._change_status(copy, Status.CLOSED, admin, "Merged", f"Duplicate of {target.ticket_id}")
+        self._log(target, admin, "Duplicate Merged", None, None, f"{copy.ticket_id} merged into this complaint")
+        self.notes.notify(copy.student, "merged",
+                          f"{copy.ticket_id} was merged into {target.ticket_id}. You'll get updates there.", target)
+        self._commit()
+        return target
 
     def admin_message(self, ticket_id: str, admin: User, text: str) -> None:
         """admin writes to the manager in the ticket thread (e.g. after a dispute)"""
@@ -320,8 +424,11 @@ class ComplaintService:
         if viewer.role == Role.ADMIN:
             return True
         if viewer.role == Role.STUDENT:
-            return complaint.student_id == viewer.id
+            return complaint.student_id == viewer.id or any(s.student_id == viewer.id for s in complaint.supporters)
         return viewer.role == Role.MANAGER and complaint.assigned_to == viewer.id
+
+    def _notify_supporters(self, complaint: Complaint, message: str) -> None:
+        self.notes.notify_many([s.student for s in complaint.supporters], "supported_update", message, complaint)
 
     def _get(self, ticket_id: str) -> Complaint:
         complaint = self.complaints.get_by_ticket(ticket_id)

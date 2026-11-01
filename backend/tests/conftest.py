@@ -16,6 +16,7 @@ import pytest  # noqa: E402
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session, sessionmaker
 
+from backend.app.ai.llm_client import DisabledClient, get_llm
 from backend.app.core.deps import get_db, get_email_sender
 from backend.app.db.seed import seed_staff
 from backend.app.db.session import init_db, make_engine
@@ -95,6 +96,7 @@ def client(session_factory, seeded_db, mailbox, tmp_path, monkeypatch) -> TestCl
     app = create_app(run_startup=False)
     app.dependency_overrides[get_db] = test_db
     app.dependency_overrides[get_email_sender] = lambda: mailbox
+    app.dependency_overrides[get_llm] = lambda: DisabledClient()   # ai tests swap in a fake
     with TestClient(app) as c:
         yield c
 
@@ -115,3 +117,67 @@ def make_student(client, mailbox, email="student1@college.edu") -> tuple[str, di
     r = client.post("/auth/verify-otp", json={"user_id": uid, "code": mailbox.last_code()})
     assert r.status_code == 200, r.text
     return uid, login(client, uid, STUDENT_PASSWORD)
+
+
+# ── fake ai for phase 4 tests ────────────────────────────────────────────────
+import hashlib  # noqa: E402
+
+import numpy as np  # noqa: E402
+from pydantic import ValidationError  # noqa: E402
+
+from backend.app.ai.llm_client import LLMClient, LLMError  # noqa: E402
+
+STOP = {"the", "a", "an", "is", "in", "on", "of", "and", "to", "my", "for", "since", "not", "it", "at", "i", "are", "be"}
+
+
+def word_vector(text: str, dim: int = 768) -> list[float]:
+    """stand-in embedding: shared words = similar vectors. drops the 'task: ... | query:' prefix"""
+    text = text.split("query:", 1)[-1].split("text:", 1)[-1].lower()
+    v = np.zeros(dim)
+    for word in re.findall(r"[a-z0-9]+", text):
+        if word not in STOP:
+            v[int(hashlib.md5(word.encode()).hexdigest(), 16) % dim] += 1
+    n = np.linalg.norm(v)
+    return list(v / n) if n else list(v)
+
+
+class FakeLLM(LLMClient):
+    """answers[feature] = dict (or function of the prompt) returned as the json. fail=True = ai down"""
+    model = "fake"
+
+    def __init__(self, answers=None, fail=False):
+        self.answers = answers or {}
+        self.fail = fail
+        self.calls: list[str] = []
+        self.prompts: list[str] = []
+
+    def generate_json(self, feature, prompt, schema):
+        self.calls.append(feature)
+        self.prompts.append(prompt)
+        answer = self.answers.get(feature)
+        if callable(answer):
+            answer = answer(prompt)
+        if self.fail or answer is None:
+            raise LLMError("fake ai is down")
+        try:
+            return schema.model_validate(answer)
+        except ValidationError as e:     # the real client turns bad json into LLMError too
+            raise LLMError("bad shape") from e
+
+    def embed(self, feature, texts):
+        self.calls.append(feature)
+        if self.fail:
+            raise LLMError("fake ai is down")
+        return [word_vector(t) for t in texts]
+
+
+@pytest.fixture
+def fake_llm():
+    return FakeLLM()
+
+
+@pytest.fixture
+def ai_client(client, fake_llm):
+    """the api client, but with the fake ai switched on"""
+    client.app.dependency_overrides[get_llm] = lambda: fake_llm
+    return client

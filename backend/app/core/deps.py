@@ -6,6 +6,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
+from backend.app.ai.llm_client import LLMClient, get_llm
 from backend.app.core.enums import Role
 from backend.app.core.security import decode_access_token
 from backend.app.db.session import SessionLocal
@@ -61,3 +62,4 @@ Student = Annotated[User, Depends(require_role(Role.STUDENT))]
 Manager = Annotated[User, Depends(require_role(Role.MANAGER))]
 Admin = Annotated[User, Depends(require_role(Role.ADMIN))]
 Sender = Annotated[EmailSender, Depends(get_email_sender)]
+LLM = Annotated[LLMClient, Depends(get_llm)]

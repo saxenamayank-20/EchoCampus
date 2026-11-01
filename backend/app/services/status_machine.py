@@ -3,6 +3,8 @@ from backend.app.services.errors import InvalidTransitionError
 
 # not a real user, means the app did it on its own (like auto-assigning)
 SYSTEM = "system"
+# admin merging a duplicate into another ticket: the copy is closed from any open status
+MERGE = "merge"
 
 
 class StatusMachine:
@@ -14,6 +16,9 @@ class StatusMachine:
         (Status.IN_PROGRESS, Status.RESOLVED): {Role.MANAGER},
         (Status.RESOLVED, Status.IN_PROGRESS): {Role.MANAGER, SYSTEM},   # reopen (system = student disputed)
         (Status.RESOLVED, Status.CLOSED): {Role.ADMIN},
+        (Status.PENDING, Status.CLOSED): {MERGE},
+        (Status.ASSIGNED, Status.CLOSED): {MERGE},
+        (Status.IN_PROGRESS, Status.CLOSED): {MERGE},
     }
 
     def can_move(self, old: Status, new: Status, actor: str) -> bool:

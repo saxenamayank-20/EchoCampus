@@ -4,7 +4,7 @@ import pytest
 
 from backend.app.core.enums import Role, Status
 from backend.app.services.errors import InvalidTransitionError
-from backend.app.services.status_machine import SYSTEM, StatusMachine
+from backend.app.services.status_machine import MERGE, SYSTEM, StatusMachine
 
 machine = StatusMachine()
 
@@ -15,8 +15,11 @@ ALLOWED = [
     (Status.RESOLVED, Status.IN_PROGRESS, Role.MANAGER),
     (Status.RESOLVED, Status.IN_PROGRESS, SYSTEM),      # student disputed the fix
     (Status.RESOLVED, Status.CLOSED, Role.ADMIN),
+    (Status.PENDING, Status.CLOSED, MERGE),         # admin merges a duplicate
+    (Status.ASSIGNED, Status.CLOSED, MERGE),
+    (Status.IN_PROGRESS, Status.CLOSED, MERGE),
 ]
-ACTORS = [SYSTEM, Role.STUDENT, Role.MANAGER, Role.ADMIN]
+ACTORS = [SYSTEM, MERGE, Role.STUDENT, Role.MANAGER, Role.ADMIN]
 
 # every other (old, new, actor) combination must be blocked
 BLOCKED = [combo for combo in itertools.product(Status, Status, ACTORS)

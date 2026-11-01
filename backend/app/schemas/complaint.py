@@ -58,6 +58,9 @@ class ComplaintOut(BaseModel):
     sla_due_at: datetime | None
     escalated: bool
     confirmation: ConfirmationOut | None    # latest close-request round
+    ai_summary: str | None
+    supporters_count: int                    # other students with the same issue
+    duplicate_of: str | None                 # ticket id it was merged into
 
     @classmethod
     def of(cls, c: Complaint) -> "ComplaintOut":
@@ -70,7 +73,9 @@ class ComplaintOut(BaseModel):
             student_remarks=c.student_remarks, manager_remarks=c.manager_remarks,
             meet_link=c.meet_link, close_requested=c.close_requested,
             created_at=c.created_at, updated_at=c.updated_at, resolved_at=c.resolved_at,
-            sla_due_at=c.sla_due_at, escalated=c.escalated, confirmation=_confirmation(c))
+            sla_due_at=c.sla_due_at, escalated=c.escalated, confirmation=_confirmation(c),
+            ai_summary=c.ai_summary, supporters_count=len(c.supporters),
+            duplicate_of=c.original.ticket_id if c.original else None)
 
 
 def _confirmation(c: Complaint) -> ConfirmationOut | None:
@@ -146,3 +151,47 @@ class AdminMessageIn(BaseModel):
 
 class PriorityPreviewOut(BaseModel):
     priority: Priority
+
+
+class PreviewIn(BaseModel):
+    title: str = Field(min_length=3, max_length=200)
+    description: str = Field(min_length=5, max_length=5000)
+    category: str
+
+
+class DuplicateOut(BaseModel):
+    """only safe fields: other students' names and descriptions are never shown"""
+    ticket_id: str
+    title: str
+    category: str
+    status: Status
+    supporters_count: int
+    similarity: float
+
+
+class CrisisOut(BaseModel):
+    message: str
+    counsellor: str
+    helpline: str
+
+
+class PreviewOut(BaseModel):
+    suggested_category: str
+    priority: Priority
+    priority_source: str
+    summary: str | None
+    used_ai: bool
+    crisis: CrisisOut | None
+    duplicates: list[DuplicateOut]
+
+
+class TextIn(BaseModel):
+    text: str = Field(min_length=1, max_length=2000)
+
+
+class PriorityIn(BaseModel):
+    priority: Priority
+
+
+class MergeIn(BaseModel):
+    into: str
