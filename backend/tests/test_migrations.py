@@ -37,3 +37,20 @@ def test_downgrade_to_nothing_and_back(tmp_path):
     command.downgrade(cfg, "base")
     assert inspect(create_engine(url)).get_table_names() == ["alembic_version"]
     command.upgrade(cfg, "head")
+
+
+def test_0004_renames_old_ids(tmp_path):
+    from sqlalchemy import text
+    url = f"sqlite:///{tmp_path / 'm.db'}"
+    cfg = alembic_cfg(url)
+    command.upgrade(cfg, "0003")
+    engine = create_engine(url)
+    with engine.begin() as conn:
+        for uid, email, role in [("ADMIN001", "a@x.edu", "admin"), ("GM002", "g@x.edu", "grievance_manager"),
+                                 ("ST000105", "s@x.edu", "student")]:
+            conn.execute(text("INSERT INTO users (user_id, name, email, password_hash, role, is_verified, is_active, "
+                              "created_at) VALUES (:u, 'x', :e, 'h', :r, 1, 1, CURRENT_TIMESTAMP)"),
+                         {"u": uid, "e": email, "r": role})
+    command.upgrade(cfg, "head")
+    with engine.connect() as conn:
+        assert sorted(conn.scalars(text("SELECT user_id FROM users"))) == ["AD100", "GM102", "ST105"]

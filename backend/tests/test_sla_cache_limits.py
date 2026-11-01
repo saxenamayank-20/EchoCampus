@@ -28,7 +28,7 @@ def test_memory_cache_ttl_and_incr(monkeypatch):
 
 def test_admin_stats_are_cached_and_refreshed_on_change(client, mailbox):
     _, h = make_student(client, mailbox)
-    admin = login(client, "ADMIN001")
+    admin = login(client, "AD100")
     assert client.get("/admin/stats", headers=admin).json()["counts"]["Total"] == 0
     assert get_cache().get(STATS_KEY) is not None   # saved for 60 s
     client.post("/complaints", json=FAN, headers=h)
@@ -49,8 +49,8 @@ def test_complaint_rate_limit_429(client, mailbox, monkeypatch):
 def test_login_rate_limit_per_ip_429(client, monkeypatch):
     monkeypatch.setattr(settings, "rate_limit_logins_per_15_min", 3)
     for _ in range(3):
-        client.post("/auth/login", json={"user_id": "ADMIN001", "password": "Wrong@123"})
-    r = client.post("/auth/login", json={"user_id": "ADMIN001", "password": "Test@1234"})
+        client.post("/auth/login", json={"user_id": "AD100", "password": "Wrong@123"})
+    r = client.post("/auth/login", json={"user_id": "AD100", "password": "Test@1234"})
     assert r.status_code == 429      # even the right password waits, that's what stops guessing
 
 
@@ -91,7 +91,7 @@ def test_resolved_complaints_are_not_escalated(seeded_db):
     student = users.register_student("S", "s@college.edu", "Student@123", "MBA")
     service = ComplaintService(seeded_db)
     c = service.submit(student, "Ragging", "in hostel", "Ragging")
-    gm = users.get("GM003")
+    gm = users.get("GM103")
     service.update_status(c.ticket_id, "In Progress", gm)
     service.update_status(c.ticket_id, "Resolved", gm)
     assert SlaService(seeded_db, FakeSender()).escalate_overdue(at=now() + timedelta(days=30)) == []
@@ -102,7 +102,7 @@ def test_escalation_notifies_admin_and_manager(client, mailbox, seeded_db):
     t = client.post("/complaints", json={"title": "Ragging", "description": "x hostel", "category": "Ragging"},
                     headers=h).json()["ticket_id"]
     SlaService(seeded_db, FakeSender()).escalate_overdue(at=now() + timedelta(hours=5))
-    admin, gm = login(client, "ADMIN001"), login(client, "GM003")
+    admin, gm = login(client, "AD100"), login(client, "GM103")
 
     n = client.get("/notifications", headers=admin).json()
     assert n["unread"] == 1 and n["items"][0]["ticket_id"] == t and n["items"][0]["type"] == "sla_escalated"
@@ -117,7 +117,7 @@ def test_escalation_notifies_admin_and_manager(client, mailbox, seeded_db):
 
 
 def test_admin_can_run_sla_check(client, mailbox):
-    admin = login(client, "ADMIN001")
+    admin = login(client, "AD100")
     assert client.post("/admin/sla/run", headers=admin).json() == {"escalated": []}
     _, h = make_student(client, mailbox)
     assert client.post("/admin/sla/run", headers=h).status_code == 403

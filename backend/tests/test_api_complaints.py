@@ -28,8 +28,8 @@ def test_student_cannot_read_another_students_ticket(client, mailbox):
 
 def test_manager_cannot_touch_another_category(client, mailbox):
     _, h = make_student(client, mailbox)
-    t = submit(client, h)                       # infrastructure -> GM002
-    gm1 = login(client, "GM001")
+    t = submit(client, h)                       # infrastructure -> GM102
+    gm1 = login(client, "GM101")
     assert client.get(f"/complaints/{t}", headers=gm1).status_code == 403
     r = client.post(f"/manager/complaints/{t}/status", json={"status": "In Progress"}, headers=gm1)
     assert r.status_code == 403
@@ -38,7 +38,7 @@ def test_manager_cannot_touch_another_category(client, mailbox):
 
 def test_roles_are_enforced(client, mailbox):
     _, student = make_student(client, mailbox)
-    gm = login(client, "GM002")
+    gm = login(client, "GM102")
     assert client.get("/admin/stats", headers=student).status_code == 403
     assert client.get("/admin/stats", headers=gm).status_code == 403
     assert client.post("/complaints", json=FAN, headers=gm).status_code == 403   # only students submit
@@ -49,7 +49,7 @@ def test_roles_are_enforced(client, mailbox):
 def test_full_flow_with_status_mail(client, mailbox):
     _, h = make_student(client, mailbox)
     t = submit(client, h)
-    gm, admin = login(client, "GM002"), login(client, "ADMIN001")
+    gm, admin = login(client, "GM102"), login(client, "AD100")
 
     assert client.get(f"/manager/complaints/{t}/status-options", headers=gm).json() == ["Assigned", "In Progress"]
     r = client.post(f"/manager/complaints/{t}/status", json={"status": "Resolved"}, headers=gm)
@@ -100,7 +100,7 @@ def test_not_found_and_validation_errors(client, mailbox):
 def test_admin_stats_and_users(client, mailbox):
     _, h = make_student(client, mailbox)
     submit(client, h)
-    admin = login(client, "ADMIN001")
+    admin = login(client, "AD100")
     stats = client.get("/admin/stats", headers=admin).json()
     assert stats["counts"]["Total"] == 1 and stats["by_category"] == {"Infrastructure": 1}
     assert len(stats["trend"]) == 30 and stats["trend"][-1]["count"] == 1

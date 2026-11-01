@@ -93,11 +93,11 @@ def test_other_student_gets_403(client, mailbox):
 def test_manager_and_admin_access(client, mailbox):
     t, h = setup_ticket(client, mailbox)
     file_id = upload(client, t, h, "proof.png", PNG).json()["id"]
-    assert client.get(f"/attachments/{file_id}", headers=login(client, "GM002")).status_code == 200  # assigned
-    assert client.get(f"/attachments/{file_id}", headers=login(client, "GM001")).status_code == 403  # not theirs
-    assert client.get(f"/attachments/{file_id}", headers=login(client, "ADMIN001")).status_code == 200
+    assert client.get(f"/attachments/{file_id}", headers=login(client, "GM102")).status_code == 200  # assigned
+    assert client.get(f"/attachments/{file_id}", headers=login(client, "GM101")).status_code == 403  # not theirs
+    assert client.get(f"/attachments/{file_id}", headers=login(client, "AD100")).status_code == 200
     # the assigned manager can add proof too
-    r = upload(client, t, login(client, "GM002"), "fixed.jpg", b"\xff\xd8\xff" + b"\x00" * 50)
+    r = upload(client, t, login(client, "GM102"), "fixed.jpg", b"\xff\xd8\xff" + b"\x00" * 50)
     assert r.status_code == 201 and r.json()["uploader_role"] == "grievance_manager"
 
 

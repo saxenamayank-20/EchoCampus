@@ -11,10 +11,10 @@ FAN = {"title": "Fan not working", "description": "room 12 fan is broken", "cate
 
 @pytest.fixture
 def resolved(client, mailbox):
-    """a complaint that GM002 has resolved, plus everyone's login headers"""
+    """a complaint that GM102 has resolved, plus everyone's login headers"""
     _, student = make_student(client, mailbox)
     t = client.post("/complaints", json=FAN, headers=student).json()["ticket_id"]
-    gm, admin = login(client, "GM002"), login(client, "ADMIN001")
+    gm, admin = login(client, "GM102"), login(client, "AD100")
     client.post(f"/manager/complaints/{t}/status", json={"status": "In Progress"}, headers=gm)
     client.post(f"/manager/complaints/{t}/status", json={"status": "Resolved", "remark": "fan replaced"}, headers=gm)
     return {"t": t, "student": student, "gm": gm, "admin": admin}
@@ -155,6 +155,6 @@ def test_quality_metrics(client, resolved):
     confirm(client, resolved, fixed=True, rating=3)
     q = client.get("/admin/quality", headers=resolved["admin"]).json()
     gm2 = q["managers"][0]
-    assert gm2["manager_id"] == "GM002" and gm2["close_requests"] == 2 and gm2["disputed"] == 1
+    assert gm2["manager_id"] == "GM102" and gm2["close_requests"] == 2 and gm2["disputed"] == 1
     assert gm2["dispute_rate"] == 0.5 and gm2["avg_rating"] == 3
     assert q["categories"] == {"Infrastructure": 3} and q["reopened_after_close_request"] == 1

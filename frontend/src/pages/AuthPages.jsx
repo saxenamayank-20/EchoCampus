@@ -61,7 +61,7 @@ export function LoginPage() {
       <form onSubmit={submit} className="space-y-4">
         <div>
           <label className="label" htmlFor="uid">User ID</label>
-          <input id="uid" className="input" placeholder="ST000101 / GM001 / ADMIN001" autoComplete="username"
+          <input id="uid" className="input" placeholder="ST101 / GM101 / AD100" autoComplete="username"
             value={form.user_id} onChange={(e) => setForm({ ...form, user_id: e.target.value })} required />
         </div>
         <div>

@@ -11,10 +11,10 @@ class Settings(BaseSettings):
 
     # seed passwords, an empty one means that account is skipped
     admin_seed_password: str = ""
-    gm001_password: str = ""
-    gm002_password: str = ""
-    gm003_password: str = ""
-    gm004_password: str = ""
+    gm101_password: str = ""
+    gm102_password: str = ""
+    gm103_password: str = ""
+    gm104_password: str = ""
 
     # login tokens. empty secret = a random one each start (fine for dev, logs everyone out on restart)
     jwt_secret: str = ""
@@ -60,11 +60,11 @@ class Settings(BaseSettings):
     def seed_passwords(self) -> dict[str, str]:
         """staff user_id -> password from .env"""
         return {
-            "ADMIN001": self.admin_seed_password,
-            "GM001": self.gm001_password,
-            "GM002": self.gm002_password,
-            "GM003": self.gm003_password,
-            "GM004": self.gm004_password,
+            "AD100": self.admin_seed_password,
+            "GM101": self.gm101_password,
+            "GM102": self.gm102_password,
+            "GM103": self.gm103_password,
+            "GM104": self.gm104_password,
         }
 
     def email_domains(self) -> list[str]:

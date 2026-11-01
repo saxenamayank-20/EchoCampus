@@ -4,33 +4,33 @@ APP_TITLE = "EchoCampus"
 
 # staff accounts created by the seed, passwords come from .env
 STAFF_ACCOUNTS = [
-    {"user_id": "ADMIN001", "name": "Super Admin", "email": "admin@college.edu",
+    {"user_id": "AD100", "name": "Super Admin", "email": "admin@college.edu",
      "role": Role.ADMIN, "department": "Administration"},
-    {"user_id": "GM001", "name": "Dr. Rajesh Kumar", "email": "rajesh@college.edu",
+    {"user_id": "GM101", "name": "Dr. Rajesh Kumar", "email": "rajesh@college.edu",
      "role": Role.MANAGER, "department": "Academics"},
-    {"user_id": "GM002", "name": "Ms. Priya Sharma", "email": "priya@college.edu",
+    {"user_id": "GM102", "name": "Ms. Priya Sharma", "email": "priya@college.edu",
      "role": Role.MANAGER, "department": "Infrastructure"},
-    {"user_id": "GM003", "name": "Mr. Anil Verma", "email": "anil@college.edu",
+    {"user_id": "GM103", "name": "Mr. Anil Verma", "email": "anil@college.edu",
      "role": Role.MANAGER, "department": "Student Affairs"},
-    {"user_id": "GM004", "name": "Ms. Sunita Rao", "email": "sunita@college.edu",
+    {"user_id": "GM104", "name": "Ms. Sunita Rao", "email": "sunita@college.edu",
      "role": Role.MANAGER, "department": "Finance & Admin"},
 ]
 
 # which manager handles which category
 CATEGORY_MANAGER_MAP = {
-    "Academic":       "GM001",
-    "Examination":    "GM001",
-    "Library":        "GM001",
-    "Infrastructure": "GM002",
-    "IT/Internet":    "GM002",
-    "Hostel":         "GM003",
-    "Canteen":        "GM003",
-    "Sports":         "GM003",
-    "Ragging":        "GM003",
-    "Fee/Finance":    "GM004",
-    "Administrative": "GM004",
-    "Scholarship":    "GM004",
-    "Other":          "GM002",
+    "Academic":       "GM101",
+    "Examination":    "GM101",
+    "Library":        "GM101",
+    "Infrastructure": "GM102",
+    "IT/Internet":    "GM102",
+    "Hostel":         "GM103",
+    "Canteen":        "GM103",
+    "Sports":         "GM103",
+    "Ragging":        "GM103",
+    "Fee/Finance":    "GM104",
+    "Administrative": "GM104",
+    "Scholarship":    "GM104",
+    "Other":          "GM102",
 }
 CATEGORIES = list(CATEGORY_MANAGER_MAP)
 
@@ -45,14 +45,15 @@ PRIORITY_KEYWORDS = {
 
 # critical complaints get a meet link (opens a new meet room)
 MANAGER_MEET_LINKS = {
-    "GM001": "https://meet.google.com/new",
-    "GM002": "https://meet.google.com/new",
-    "GM003": "https://meet.google.com/new",
-    "GM004": "https://meet.google.com/new",
+    "GM101": "https://meet.google.com/new",
+    "GM102": "https://meet.google.com/new",
+    "GM103": "https://meet.google.com/new",
+    "GM104": "https://meet.google.com/new",
 }
 
-# student ids look like ST000101, ST000102 ...
+# every user id is exactly 5 characters: students ST101, ST102 ... managers GM101-GM104, admin AD100
 STUDENT_ID_PREFIX = "ST"
 STUDENT_ID_START = 101
+STUDENT_ID_DIGITS = 3        # ST + 3 digits, so the last one is ST999
 
 PASSWORD_MIN_LENGTH = 8

@@ -12,7 +12,7 @@ def test_register_sends_otp_and_blocks_login_until_verified(client, mailbox):
     r = client.post("/auth/register", json=NEW)
     assert r.status_code == 201
     uid = r.json()["user_id"]
-    assert uid == "ST000101"
+    assert uid == "ST101"
     assert mailbox.sent[-1][0] == "riya@college.edu"
 
     r = client.post("/auth/login", json={"user_id": uid, "password": STUDENT_PASSWORD})
@@ -73,16 +73,16 @@ def test_duplicate_email_is_409(client, mailbox):
 
 
 def test_wrong_password_is_401(client):
-    r = client.post("/auth/login", json={"user_id": "ADMIN001", "password": "Nope@1234"})
+    r = client.post("/auth/login", json={"user_id": "AD100", "password": "Nope@1234"})
     assert r.status_code == 401 and r.json()["error"]["code"] == "unauthorized"
 
 
 def test_token_carries_role_and_expiry(client):
     import jwt
     from backend.app.core.security import JWT_SECRET
-    token = client.post("/auth/login", json={"user_id": "GM001", "password": "Test@1234"}).json()["access_token"]
+    token = client.post("/auth/login", json={"user_id": "GM101", "password": "Test@1234"}).json()["access_token"]
     payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
-    assert payload["sub"] == "GM001" and payload["role"] == "grievance_manager" and "exp" in payload
+    assert payload["sub"] == "GM101" and payload["role"] == "grievance_manager" and "exp" in payload
 
 
 def test_no_token_and_bad_token_are_401(client):
@@ -92,5 +92,5 @@ def test_no_token_and_bad_token_are_401(client):
 
 def test_expired_token_is_401(client, monkeypatch):
     monkeypatch.setattr(settings, "jwt_expire_minutes", -1)
-    token = create_access_token("ADMIN001", "admin")
+    token = create_access_token("AD100", "admin")
     assert client.get("/auth/me", headers={"Authorization": f"Bearer {token}"}).status_code == 401

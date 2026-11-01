@@ -68,11 +68,11 @@ def test_enums_are_real_postgres_types(pg):
 
 
 def test_full_flow_on_postgres(pg):
-    seed_staff(pg, {"ADMIN001": "Test@1234", "GM002": "Test@1234", "GM003": "Test@1234"})
+    seed_staff(pg, {"AD100": "Test@1234", "GM102": "Test@1234", "GM103": "Test@1234"})
     users = UserService(pg)
     a = users.register_student("A", "a@college.edu", "Student@123", "MBA")
     b = users.register_student("B", "b@college.edu", "Student@123", "MBA")
-    assert (a.user_id, b.user_id) == ("ST000101", "ST000102")   # from the sequence
+    assert (a.user_id, b.user_id) == ("ST101", "ST102")   # from the sequence
 
     service = ComplaintService(pg)
     c = service.submit(a, "Ragging in hostel", "seniors troubling", "Ragging")

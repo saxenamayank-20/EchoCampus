@@ -21,20 +21,20 @@ def test_all_tables_are_created(db):
 def test_seed_creates_staff_and_categories(seeded_db):
     users = seeded_db.scalars(select(User)).all()
     assert sorted(u.user_id for u in users) == sorted(STAFF_IDS)
-    assert seeded_db.scalar(select(User).where(User.user_id == "ADMIN001")).role == Role.ADMIN
+    assert seeded_db.scalar(select(User).where(User.user_id == "AD100")).role == Role.ADMIN
     assert seeded_db.scalar(select(func.count()).select_from(ManagerCategory)) == len(CATEGORY_MANAGER_MAP)
 
 
 def test_seed_stores_hash_not_password(seeded_db):
-    admin = seeded_db.scalar(select(User).where(User.user_id == "ADMIN001"))
+    admin = seeded_db.scalar(select(User).where(User.user_id == "AD100"))
     assert admin.password_hash != TEST_PASSWORD
     assert verify_password(TEST_PASSWORD, admin.password_hash)
 
 
 def test_seed_skips_accounts_without_password(db):
-    created = seed_staff(db, {"ADMIN001": TEST_PASSWORD, "GM001": ""})
-    assert created == ["ADMIN001"]
-    assert db.scalar(select(User).where(User.user_id == "GM001")) is None
+    created = seed_staff(db, {"AD100": TEST_PASSWORD, "GM101": ""})
+    assert created == ["AD100"]
+    assert db.scalar(select(User).where(User.user_id == "GM101")) is None
 
 
 def test_seed_twice_does_not_duplicate(seeded_db):
@@ -44,25 +44,25 @@ def test_seed_twice_does_not_duplicate(seeded_db):
 
 
 def test_reset_staff_passwords(seeded_db):
-    reset_staff_passwords(seeded_db, {"GM001": "New@Pass99"})
-    gm = seeded_db.scalar(select(User).where(User.user_id == "GM001"))
+    reset_staff_passwords(seeded_db, {"GM101": "New@Pass99"})
+    gm = seeded_db.scalar(select(User).where(User.user_id == "GM101"))
     assert verify_password("New@Pass99", gm.password_hash)
 
 
 def test_settings_read_from_env(monkeypatch):
-    monkeypatch.setenv("GM002_PASSWORD", "FromEnv@1")
+    monkeypatch.setenv("GM102_PASSWORD", "FromEnv@1")
     monkeypatch.setenv("DATABASE_URL", "sqlite:///./other.db")
     s = Settings(_env_file=None)
-    assert s.seed_passwords()["GM002"] == "FromEnv@1"
+    assert s.seed_passwords()["GM102"] == "FromEnv@1"
     assert s.database_url == "sqlite:///./other.db"
 
 
 def test_settings_default_to_empty_and_local_sqlite(monkeypatch):
-    for var in ["DATABASE_URL", "ADMIN_SEED_PASSWORD", "GM001_PASSWORD"]:
+    for var in ["DATABASE_URL", "ADMIN_SEED_PASSWORD", "GM101_PASSWORD"]:
         monkeypatch.delenv(var, raising=False)
     s = Settings(_env_file=None)
     assert s.database_url.startswith("sqlite")
-    assert s.seed_passwords()["ADMIN001"] == ""
+    assert s.seed_passwords()["AD100"] == ""
 
 
 def test_no_password_literals_in_backend_code():

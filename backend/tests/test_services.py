@@ -36,7 +36,7 @@ def staff(users, user_id):
 def test_student_ids_go_up_from_st000101(users):
     first = users.register_student("A", "a@college.edu", STRONG, "MBA")
     second = users.register_student("B", "b@college.edu", STRONG, "MBA")
-    assert (first.user_id, second.user_id) == ("ST000101", "ST000102")
+    assert (first.user_id, second.user_id) == ("ST101", "ST102")
 
 
 def test_duplicate_email_rejected(users, student):
@@ -50,9 +50,9 @@ def test_weak_password_rejected(users):
 
 
 def test_login(users, student):
-    assert users.login("ST000101", STRONG).id == student.id
-    assert users.login("ST000101", "Wrong@123") is None
-    assert users.login("ADMIN001", TEST_PASSWORD).role == Role.ADMIN
+    assert users.login("ST101", STRONG).id == student.id
+    assert users.login("ST101", "Wrong@123") is None
+    assert users.login("AD100", TEST_PASSWORD).role == Role.ADMIN
 
 
 # ── submit + routing ─────────────────────────────────────────────────────────
@@ -95,8 +95,8 @@ def test_unknown_category_rejected(complaints, student):
 
 # ── status changes ───────────────────────────────────────────────────────────
 def test_full_flow_to_closed(users, complaints, student):
-    gm = staff(users, "GM002")
-    admin = staff(users, "ADMIN001")
+    gm = staff(users, "GM102")
+    admin = staff(users, "AD100")
     t = complaints.submit(student, "Fan broken", "room 5", "Infrastructure").ticket_id
 
     complaints.update_status(t, "In Progress", gm, "electrician called")
@@ -113,11 +113,11 @@ def test_full_flow_to_closed(users, complaints, student):
 def test_manager_cannot_skip_to_resolved(users, complaints, student):
     t = complaints.submit(student, "Fan", "room 5", "Infrastructure").ticket_id
     with pytest.raises(InvalidTransitionError):
-        complaints.update_status(t, "Resolved", staff(users, "GM002"))
+        complaints.update_status(t, "Resolved", staff(users, "GM102"))
 
 
 def test_manager_cannot_close(users, complaints, student):
-    gm = staff(users, "GM002")
+    gm = staff(users, "GM102")
     t = complaints.submit(student, "Fan", "room 5", "Infrastructure").ticket_id
     complaints.update_status(t, "In Progress", gm)
     complaints.update_status(t, "Resolved", gm)
@@ -128,11 +128,11 @@ def test_manager_cannot_close(users, complaints, student):
 def test_other_manager_cannot_touch(users, complaints, student):
     t = complaints.submit(student, "Fan", "room 5", "Infrastructure").ticket_id
     with pytest.raises(PermissionDeniedError):
-        complaints.update_status(t, "In Progress", staff(users, "GM001"))
+        complaints.update_status(t, "In Progress", staff(users, "GM101"))
 
 
 def test_reopen_clears_close_request(users, complaints, student):
-    gm = staff(users, "GM002")
+    gm = staff(users, "GM102")
     t = complaints.submit(student, "Fan", "room 5", "Infrastructure").ticket_id
     complaints.update_status(t, "In Progress", gm)
     complaints.update_status(t, "Resolved", gm)
@@ -142,7 +142,7 @@ def test_reopen_clears_close_request(users, complaints, student):
 
 
 def test_admin_needs_close_request_unless_forced(users, complaints, student):
-    gm, admin = staff(users, "GM002"), staff(users, "ADMIN001")
+    gm, admin = staff(users, "GM102"), staff(users, "AD100")
     t = complaints.submit(student, "Fan", "room 5", "Infrastructure").ticket_id
     complaints.update_status(t, "In Progress", gm)
     complaints.update_status(t, "Resolved", gm)
@@ -157,7 +157,7 @@ def test_admin_needs_close_request_unless_forced(users, complaints, student):
 def test_request_close_only_when_resolved(users, complaints, student):
     t = complaints.submit(student, "Fan", "room 5", "Infrastructure").ticket_id
     with pytest.raises(InvalidTransitionError):
-        complaints.request_close(t, staff(users, "GM002"), "done")
+        complaints.request_close(t, staff(users, "GM102"), "done")
 
 
 def test_stats(users, complaints, student):
@@ -166,3 +166,16 @@ def test_stats(users, complaints, student):
     stats = complaints.stats()
     assert stats["Total"] == 2 and stats["Assigned"] == 2
     assert stats["Students"] == 1 and stats["OpenCritical"] == 1
+
+
+def test_student_id_stops_at_st999(users, monkeypatch):
+    from backend.app.repositories.user_repository import UserRepository
+    monkeypatch.setattr(UserRepository, "student_user_ids", lambda self: ["ST999"])
+    with pytest.raises(ConflictError):
+        users.next_student_id()
+
+
+def test_all_ids_are_five_characters(users, student):
+    from backend.app.core.constants import STAFF_ACCOUNTS
+    assert student.user_id == "ST101"
+    assert all(len(a["user_id"]) == 5 for a in STAFF_ACCOUNTS)

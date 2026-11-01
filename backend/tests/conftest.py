@@ -19,7 +19,7 @@ from backend.app.main import create_app
 
 TEST_PASSWORD = "Test@1234"
 STUDENT_PASSWORD = "Student@123"
-STAFF_IDS = ["ADMIN001", "GM001", "GM002", "GM003", "GM004"]
+STAFF_IDS = ["AD100", "GM101", "GM102", "GM103", "GM104"]
 
 
 @pytest.fixture(autouse=True)

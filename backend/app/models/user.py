@@ -7,7 +7,7 @@ from backend.app.core.enums import Role
 from backend.app.db.base import Base, enum_column, now
 
 
-# postgres counter for student numbers (ST000101 ...). safe when two students register at once
+# postgres counter for student numbers (ST101 ...). safe when two students register at once
 STUDENT_ID_SEQ = Sequence("student_id_seq", start=101, metadata=Base.metadata)
 
 
@@ -15,7 +15,7 @@ class User(Base):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    user_id: Mapped[str] = mapped_column(String(20), unique=True)   # ST000101 / GM001 / ADMIN001
+    user_id: Mapped[str] = mapped_column(String(20), unique=True)   # ST101 / GM101 / AD100
     name: Mapped[str] = mapped_column(String(100))
     email: Mapped[str] = mapped_column(String(255), unique=True)
     password_hash: Mapped[str] = mapped_column(String(255))
