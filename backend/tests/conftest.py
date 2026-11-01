@@ -1,11 +1,15 @@
 import os
 import re
 
-# tests must never touch the real db from .env (env vars beat .env), set before the app is imported
+# tests must never touch the real db, redis, email or ai from .env.
+# DATABASE_URL is set before the app is imported (env vars beat .env).
 os.environ["DATABASE_URL"] = "sqlite://"
-os.environ["SMTP_HOST"] = ""
-os.environ["REDIS_URL"] = ""        # in-memory cache in tests
 os.environ["RUN_SCHEDULER"] = "false"
+# empty env values count as "not set" (env_ignore_empty), so switch these off on the settings object itself
+from backend.app.core.config import settings as _settings  # noqa: E402
+_settings.redis_url = ""            # in-memory cache
+_settings.smtp_host = ""            # emails are only printed
+_settings.gemini_api_key = ""       # no real ai calls, tests use a fake
 
 import bcrypt  # noqa: E402
 import pytest  # noqa: E402

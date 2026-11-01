@@ -4,7 +4,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     """app settings, read from .env (names are not case sensitive)"""
 
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    # env_ignore_empty: an empty line like LLM_MODEL= means "use the default below"
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore", env_ignore_empty=True)
 
     # local sqlite for now, phase 3 only changes this url to neon postgres
     database_url: str = "sqlite:///./echocampus.db"
@@ -52,6 +53,21 @@ class Settings(BaseSettings):
 
     # student has this many days to say "fixed" or "not fixed", then it auto-confirms
     confirmation_window_days: int = 3
+
+    # ai (gemini). no key = the app works without ai, keyword priority only.
+    # model names checked against ai.google.dev/gemini-api/docs/models on 2026-11-01
+    llm_provider: str = "gemini"
+    gemini_api_key: str = ""
+    llm_model: str = "gemini-3.5-flash-lite"
+    embedding_model: str = "gemini-embedding-2"
+    embedding_dim: int = 768        # fixed in the database column, changing it needs a migration
+    llm_max_rpm: int = 8            # stay under the free tier per-minute limit
+    llm_timeout_seconds: int = 20
+    duplicate_threshold: float = 0.85
+    rag_min_similarity: float = 0.45   # below this, the policy search says "not in the documents"
+    ai_requests_per_hour: int = 20     # per user, for preview / assistant / reply drafts
+    counsellor_contact: str = "Campus counsellor: Student Wellness Centre, Admin Block, Room 12 (Mon-Sat, 9am-5pm)"
+    crisis_helpline: str = "Tele-MANAS 14416 (free, 24x7)"
 
     def sla_hours(self, priority: str) -> int:
         return {"Critical": self.sla_hours_critical, "High": self.sla_hours_high,
