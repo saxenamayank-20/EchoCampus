@@ -94,7 +94,8 @@ class ComplaintService:
         hit(f"ai:{student.id}", settings.ai_requests_per_hour, 3600)
         t = triage(self.llm, title.strip(), description.strip(), category)
         vector = embed_complaint(self.llm, title, description)
-        duplicates = find_duplicates(self.db, vector, exclude_student_id=student.id)
+        duplicates = [(c, score) for c, score in find_duplicates(self.db, vector, exclude_student_id=student.id)
+                      if not any(sup.student_id == student.id for sup in c.supporters)]   # already backed it
         return {"triage": t, "crisis": support_message() if t.crisis else None, "duplicates": duplicates}
 
     # ── "i have this issue too" ──────────────────────────────────────────────

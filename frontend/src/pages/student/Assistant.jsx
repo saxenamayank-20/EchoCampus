@@ -14,7 +14,8 @@ export default function Assistant() {
   const [chat, setChat] = useState([]);       // [{ q, a: response | null, error }]
   const [busy, setBusy] = useState(false);
   const end = useRef(null);
-  useEffect(() => end.current?.scrollIntoView({ behavior: "smooth" }), [chat]);
+  // braces matter: an effect may only return a clean-up function (newer browsers return a promise here)
+  useEffect(() => { end.current?.scrollIntoView({ behavior: "smooth" }); }, [chat]);
 
   async function ask(q) {
     const text = (q ?? question).trim();

@@ -171,6 +171,7 @@ def test_support_flow(ai_client, two_students):
     assert ai_client.post(f"/complaints/{t}/support", headers=b).status_code == 409     # twice
     assert ai_client.post(f"/complaints/{t}/support", headers=a).status_code == 409     # own
     assert ai_client.get(f"/complaints/{t}", headers=b).status_code == 200              # supporter can view
+    assert ai_client.post("/complaints/preview", json=WIFI, headers=b).json()["duplicates"] == []   # already backed
     assert [c["ticket_id"] for c in ai_client.get("/complaints/supporting", headers=b).json()] == [t]
     gm = login(ai_client, "GM102")
     note = ai_client.get("/notifications", headers=gm).json()["items"][0]
