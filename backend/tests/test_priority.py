@@ -25,3 +25,13 @@ def test_highest_level_wins():
 
 def test_category_is_part_of_the_text():
     assert detector.detect("Food", "too oily", "Canteen") == Priority.MEDIUM
+
+
+@pytest.mark.parametrize("category", ["Ragging", "Harassment", "Discrimination"])
+def test_some_categories_are_always_critical(category):
+    # no alarming words at all, the category alone makes it critical
+    assert detector.detect("Need help", "please look into this", category) == Priority.CRITICAL
+
+
+def test_transport_follows_normal_keywords():
+    assert detector.detect("Bus late", "route 4 bus is late", "Transport") == Priority.LOW

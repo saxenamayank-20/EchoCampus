@@ -77,12 +77,12 @@ COMPLAINTS = [
     ("Library closes early", "The library closes at 6 pm, students need it till late during exams.", "Library"),
     ("Drinking water not available", "No drinking water on the third floor of the main building.", "Infrastructure"),
     ("ID card not issued", "My student ID card has not been issued even after two months.", "Administrative"),
-    ("Harassment by a senior", "A senior keeps sending threatening messages, I feel unsafe.", "Ragging"),
+    ("Harassment by a senior", "A senior keeps sending threatening messages, I feel unsafe.", "Harassment"),
     ("Practical exam rescheduled without notice", "Our chemistry practical was moved without telling us.", "Examination"),
     ("Hostel mess timings", "Breakfast ends at 8 am, before early lectures we cannot eat.", "Canteen"),
     ("Classroom AC leaking", "The AC in room 301 drips water on the benches.", "Infrastructure"),
     ("Library wifi slow", "Wifi in the library reading room is too slow to download papers.", "IT/Internet"),
-    ("Transport bus late", "The college bus on route 4 is late every day by 20 minutes.", "Other"),
+    ("Transport bus late", "The college bus on route 4 is late every day by 20 minutes.", "Transport"),
     ("Scholarship form not accepted", "The portal rejects my scholarship form without any error message.", "Scholarship"),
     ("Mentor not available", "My assigned mentor has not replied to any email this semester.", "Academic"),
     ("Medical room closed", "The medical room was closed when a student fainted in the afternoon.", "Other"),
@@ -92,7 +92,7 @@ COMPLAINTS = [
     ("Projector 204 still broken", "The classroom 204 projector does not switch on, lectures affected.", "Infrastructure"),
     ("Scholarship not received yet", "Merit scholarship still not credited after verification was done.", "Scholarship"),
     ("Street lights not working", "Street lights between the library and the hostel are off, it is dark and unsafe.", "Infrastructure"),
-    ("Bus route 4 always late", "Route 4 college bus reaches 20 minutes late every morning.", "Other"),
+    ("Bus route 4 always late", "Route 4 college bus reaches 20 minutes late every morning.", "Transport"),
     ("Exam clash on 14th", "My two exams are at the same time on the 14th, please reschedule.", "Examination"),
     # more singles
     ("Lab safety goggles missing", "There are no safety goggles in chemistry lab 2.", "Infrastructure"),
@@ -102,7 +102,7 @@ COMPLAINTS = [
     ("Basketball court lights broken", "Floodlights on the basketball court are broken, no evening practice.", "Sports"),
     ("Fee portal double charged", "The fee portal charged my card twice for the same payment.", "Fee/Finance"),
     ("Migration certificate pending", "Requested a migration certificate a month ago, no update.", "Administrative"),
-    ("Discrimination by a staff member", "A staff member keeps making remarks about my region, I feel targeted.", "Other"),
+    ("Discrimination by a staff member", "A staff member keeps making remarks about my region, I feel targeted.", "Discrimination"),
 ]
 
 

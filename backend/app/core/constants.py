@@ -30,6 +30,9 @@ CATEGORY_MANAGER_MAP = {
     "Fee/Finance":    "GM104",
     "Administrative": "GM104",
     "Scholarship":    "GM104",
+    "Transport":      "GM102",
+    "Harassment":     "GM103",
+    "Discrimination": "GM103",
     "Other":          "GM102",
 }
 CATEGORIES = list(CATEGORY_MANAGER_MAP)
@@ -41,6 +44,13 @@ PRIORITY_KEYWORDS = {
                         "broken", "failed", "error", "blocked", "urgent", "immediately"],
     Priority.MEDIUM:   ["internet", "wifi", "library", "hostel", "canteen", "maintenance",
                         "repair", "issue", "problem", "concern"],
+}
+
+# some categories are always at least this urgent, whatever words are used (student handbook 15.3)
+CATEGORY_MIN_PRIORITY = {
+    "Ragging": Priority.CRITICAL,
+    "Harassment": Priority.CRITICAL,
+    "Discrimination": Priority.CRITICAL,
 }
 
 # critical complaints get a meet link (opens a new meet room)
