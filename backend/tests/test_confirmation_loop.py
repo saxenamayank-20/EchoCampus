@@ -158,3 +158,12 @@ def test_quality_metrics(client, resolved):
     assert gm2["manager_id"] == "GM102" and gm2["close_requests"] == 2 and gm2["disputed"] == 1
     assert gm2["dispute_rate"] == 0.5 and gm2["avg_rating"] == 3
     assert q["categories"] == {"Infrastructure": 3} and q["reopened_after_close_request"] == 1
+
+
+def test_after_a_dispute_the_same_note_is_refused(client, resolved):
+    close_request(client, resolved, "Fan replaced")
+    confirm(client, resolved, fixed=False, reason="still broken")
+    client.post(f"/manager/complaints/{resolved['t']}/status", json={"status": "Resolved"}, headers=resolved["gm"])
+    r = close_request(client, resolved, "fan replaced ")           # same note again (case/space don't matter)
+    assert r.status_code == 422 and "new note" in r.json()["error"]["message"]
+    assert close_request(client, resolved, "Replaced the regulator too").status_code == 200

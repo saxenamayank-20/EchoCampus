@@ -1,4 +1,4 @@
-"""Fill the database with realistic demo data for the viva: students, ~45 complaints over the
+"""Fill the database with realistic demo data for the viva: students, ~60 complaints over the
 last 30 days (with groups of near-duplicates), some in progress / resolved / closed, and supporters.
 
 Run from the repo root (tables must exist):
@@ -86,6 +86,23 @@ COMPLAINTS = [
     ("Scholarship form not accepted", "The portal rejects my scholarship form without any error message.", "Scholarship"),
     ("Mentor not available", "My assigned mentor has not replied to any email this semester.", "Academic"),
     ("Medical room closed", "The medical room was closed when a student fainted in the afternoon.", "Other"),
+    # more near-duplicates so clusters show in the demo
+    ("Mess food stale again", "Stale and smelly food served in the mess at dinner, several students sick.", "Canteen"),
+    ("Wifi down in block B", "Block B hostel rooms have no wifi since Monday night.", "IT/Internet"),
+    ("Projector 204 still broken", "The classroom 204 projector does not switch on, lectures affected.", "Infrastructure"),
+    ("Scholarship not received yet", "Merit scholarship still not credited after verification was done.", "Scholarship"),
+    ("Street lights not working", "Street lights between the library and the hostel are off, it is dark and unsafe.", "Infrastructure"),
+    ("Bus route 4 always late", "Route 4 college bus reaches 20 minutes late every morning.", "Other"),
+    ("Exam clash on 14th", "My two exams are at the same time on the 14th, please reschedule.", "Examination"),
+    # more singles
+    ("Lab safety goggles missing", "There are no safety goggles in chemistry lab 2.", "Infrastructure"),
+    ("Hostel hot water not working", "No hot water in hostel C bathrooms for a week.", "Hostel"),
+    ("Grade sheet name spelling wrong", "My name is spelled wrong on the semester grade sheet.", "Examination"),
+    ("Library e-journal access not working", "Cannot open online journals from the hostel network.", "Library"),
+    ("Basketball court lights broken", "Floodlights on the basketball court are broken, no evening practice.", "Sports"),
+    ("Fee portal double charged", "The fee portal charged my card twice for the same payment.", "Fee/Finance"),
+    ("Migration certificate pending", "Requested a migration certificate a month ago, no update.", "Administrative"),
+    ("Discrimination by a staff member", "A staff member keeps making remarks about my region, I feel targeted.", "Other"),
 ]
 
 

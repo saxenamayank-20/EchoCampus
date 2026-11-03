@@ -199,6 +199,9 @@ class ComplaintService:
         last = complaint.latest_confirmation
         if last and last.student_response in (PENDING, CONFIRMED, AUTO_CONFIRMED) and complaint.close_requested:
             raise ConflictError("A close request is already open for this complaint.")
+        if last and last.student_response == DISPUTED and note.lower() == last.manager_note.strip().lower():
+            # after a dispute the manager must say what was done differently this time
+            raise InvalidInputError("The student said it wasn't fixed. Add a new note on what was done this time.")
 
         days = settings.confirmation_window_days
         self.db.add(ClosureConfirmation(complaint=complaint, manager=manager, manager_note=note,
