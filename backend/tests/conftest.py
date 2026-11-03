@@ -37,9 +37,11 @@ def fast_bcrypt(monkeypatch):
 @pytest.fixture(autouse=True)
 def clean_cache_and_limits(monkeypatch):
     """every test starts with an empty cache, and limits high enough not to get in the way"""
+    from backend.app.agents.checkpointer import reset_checkpointer
     from backend.app.core.cache import get_cache
     from backend.app.core.config import settings
     get_cache().clear()
+    reset_checkpointer()      # paused graphs from another test must not leak in (thread ids repeat)
     monkeypatch.setattr(settings, "rate_limit_complaints_per_hour", 1000)
     monkeypatch.setattr(settings, "rate_limit_logins_per_15_min", 1000)
 

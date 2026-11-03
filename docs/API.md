@@ -55,8 +55,11 @@ Every route except login/register/health needs `Authorization: Bearer <token>`. 
 | Method | Route | What it does |
 |---|---|---|
 | POST | `/admin/complaints/{ticket_id}/close` | close after the student confirmed (override needs a reason) |
+| GET | `/admin/complaints/{ticket_id}/closure-state` | where the closure graph is paused: await_student, await_admin or none |
 | POST | `/admin/complaints/{ticket_id}/merge` | ticket_id is a duplicate: close it and add its student as a supporter of `into` |
 | POST | `/admin/complaints/{ticket_id}/message` | message to the assigned manager |
+| GET | `/admin/insights` | the latest weekly reports, newest first |
+| POST | `/admin/insights/run` | write this week's report now (the scheduler also does it every monday) |
 | GET | `/admin/manager-updates` | managers' progress notes, paged |
 | GET | `/admin/quality` | dispute rate and student ratings per manager and category |
 | POST | `/admin/sla/run` | same job the scheduler runs every 15 minutes, on demand |

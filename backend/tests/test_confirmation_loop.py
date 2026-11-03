@@ -46,7 +46,8 @@ def test_close_request_asks_the_student(client, mailbox, resolved):
     c = ticket(client, resolved)["confirmation"]
     assert c["response"] == "pending" and c["manager_note"] == "New fan installed and tested"
     n = client.get("/notifications", headers=resolved["student"]).json()
-    assert n["unread"] == 1 and "really fixed" in n["items"][0]["message"]
+    # 2 = "received" on submit + this one
+    assert n["unread"] == 2 and "really fixed" in n["items"][0]["message"]
     assert "was" in mailbox.sent[-1][1] and "/tickets/" in mailbox.sent[-1][2]   # email with the portal link
     assert close_request(client, resolved).status_code == 409                    # already waiting
 

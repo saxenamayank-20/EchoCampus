@@ -5,12 +5,11 @@ from sqlalchemy.orm import Session
 
 from backend.app.core.cache import get_cache
 from backend.app.core.config import settings
-from backend.app.core.enums import Role
+from backend.app.core.enums import Status
 from backend.app.db.base import now
-from backend.app.models import ClosureConfirmation, Complaint, ComplaintHistory
-from backend.app.models.confirmation import AUTO_CONFIRMED, PENDING
-from backend.app.repositories.user_repository import UserRepository
-from backend.app.services.complaint_service import STATS_KEY
+from backend.app.models import ClosureConfirmation, Complaint
+from backend.app.models.confirmation import PENDING
+from backend.app.services.complaint_service import STATS_KEY, ComplaintService
 from backend.app.services.email_service import EmailSender
 from backend.app.services.notification_service import NotificationService
 
@@ -26,7 +25,8 @@ class ConfirmationService:
     def _pending(self) -> list[tuple[ClosureConfirmation, Complaint]]:
         rows = self.db.execute(select(ClosureConfirmation, Complaint)
                                .join(Complaint, Complaint.id == ClosureConfirmation.complaint_id)
-                               .where(ClosureConfirmation.student_response == PENDING))
+                               .where(ClosureConfirmation.student_response == PENDING,
+                                      Complaint.status != Status.CLOSED))   # admin override-closed it already
         return [tuple(row) for row in rows]
 
     def send_reminders(self, at: datetime | None = None) -> int:
@@ -49,15 +49,10 @@ class ConfirmationService:
         """no answer by the deadline -> auto_confirmed, so tickets never get stuck"""
         at = at or now()
         done = []
-        admins = UserRepository(self.db).list_users(Role.ADMIN)
+        complaints = ComplaintService(self.db)
         for c, ticket in self._pending():
             if c.due_at <= at:
-                c.student_response = AUTO_CONFIRMED
-                c.responded_at = at
-                self.db.add(ComplaintHistory(complaint=ticket, user=None, action="Auto Confirmed",
-                                             note=f"Student didn't answer within {settings.confirmation_window_days} days"))
-                self.notes.notify_many(admins, "auto_confirmed",
-                                       f"{ticket.ticket_id} was auto-confirmed (no answer from the student).", ticket)
+                complaints.auto_confirm(c, at)     # resumes the paused closure graph
                 done.append(ticket.ticket_id)
         self.db.commit()
         if done:

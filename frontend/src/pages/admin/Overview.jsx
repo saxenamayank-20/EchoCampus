@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlarmClock, Bell, CheckCircle2, Clock, Flame, Hourglass, LayoutList, RefreshCw } from "lucide-react";
+import { AlarmClock, Bell, CheckCircle2, Clock, Flame, Hourglass, LayoutList, RefreshCw, Sparkles } from "lucide-react";
 import {
   Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
@@ -112,6 +112,46 @@ function OverdueList() {
   );
 }
 
+// the weekly report: numbers from sql, written up by the ai (or a plain template)
+function WeeklyReport() {
+  const toast = useToast();
+  const queryClient = useQueryClient();
+  const { data } = useQuery({ queryKey: ["admin-insights"], queryFn: () => api("/admin/insights") });
+  const run = useMutation({
+    mutationFn: () => api("/admin/insights/run", { method: "POST" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-insights"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    },
+    onError: (e) => toast.error(e.message),
+  });
+  const latest = data?.[0];
+
+  return (
+    <div className="card mb-6 overflow-hidden">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-5 py-3 dark:border-slate-800">
+        <h2 className="flex items-center gap-2 text-sm font-semibold"><Sparkles size={16} className="text-indigo-500" /> Weekly report</h2>
+        <button className="btn-secondary px-3 py-1.5 text-xs" onClick={() => run.mutate()} disabled={run.isPending}>
+          <RefreshCw size={14} className={run.isPending ? "animate-spin" : ""} /> {run.isPending ? "Writing..." : "Generate now"}
+        </button>
+      </div>
+      {!latest ? (
+        <EmptyState title="No report yet" text="A report is written every Monday morning, or press Generate now." />
+      ) : (
+        <div className="px-5 py-4">
+          <ul className="list-disc space-y-1 pl-5 text-sm">
+            {latest.lines.map((line, i) => <li key={i}>{line}</li>)}
+          </ul>
+          <p className="mt-3 text-xs text-slate-500">
+            {formatDateTime(latest.period_start)} to {formatDateTime(latest.period_end)} ·{" "}
+            {latest.used_ai ? "written by AI from the numbers above, every number checked" : "plain summary (AI not used)"}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Overview() {
   const { data, isLoading, error } = useQuery({ queryKey: ["admin-stats"], queryFn: () => api("/admin/stats") });
 
@@ -137,6 +177,7 @@ export default function Overview() {
         <StatCard label="Overdue (SLA)" value={counts.Overdue} icon={AlarmClock} tone="red" />
       </div>
 
+      <WeeklyReport />
       <OverdueList />
 
       {isLoading ? (

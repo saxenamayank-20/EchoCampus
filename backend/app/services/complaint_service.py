@@ -2,15 +2,16 @@ import json
 import random
 import string
 from collections import Counter, defaultdict
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from backend.app.agents.closure_graph import AWAIT_ADMIN, AWAIT_STUDENT, ClosureFlow
 from backend.app.ai.crisis import support_message
 from backend.app.ai.duplicates import embed_complaint, find_duplicates
 from backend.app.ai.llm_client import DisabledClient, LLMClient
-from backend.app.ai.triage import triage
+from backend.app.ai.triage import Triage, triage
 from backend.app.core.cache import get_cache
 from backend.app.core.config import settings
 from backend.app.core.constants import CATEGORIES, MANAGER_MEET_LINKS
@@ -53,6 +54,7 @@ class ComplaintService:
         self.machine = machine or StatusMachine()
         self.notes = NotificationService(db)
         self.llm = llm or DisabledClient()     # no ai given = keyword rules only
+        self._flow = None                      # closure graph, built when first needed
 
     # ── student side ──────────────────────────────────────────────────────────
     def submit(self, student: User, title: str, description: str, category: str,
@@ -65,8 +67,15 @@ class ComplaintService:
         # stops spam: 5 complaints per student per hour by default
         hit(f"submit:{student.id}", settings.rate_limit_complaints_per_hour, 3600)
 
-        # ai triage with the keyword safety floor (falls back to keywords if the ai is down)
-        t = triage(self.llm, title, description, category)
+        # the steps run as a langgraph graph: classify -> duplicates -> route -> escalate? -> notify
+        from backend.app.agents.intake_graph import run_intake   # here, the graph imports this file too
+        result = run_intake(self, student, title, description, category, remarks)
+        return self._get(result["ticket_id"])
+
+    # ── intake graph steps (called by the nodes in agents/intake_graph.py) ─────
+    def create_routed(self, student: User, title: str, description: str, category: str, remarks: str,
+                      t: Triage, embedding: list[float] | None, duplicates: list[str]) -> Complaint:
+        """saves the complaint with its priority + sla, and assigns the category's manager"""
         priority = t.priority
         filed = now()   # one moment for both, so the sla is exactly N hours after filing
         complaint = Complaint(ticket_id=self._new_ticket_id(), student=student, title=title,
@@ -75,19 +84,35 @@ class ComplaintService:
                               status=Status.PENDING, student_remarks=remarks.strip() or None,
                               created_at=filed, updated_at=filed,
                               sla_due_at=filed + timedelta(hours=settings.sla_hours(priority)),
-                              embedding=embed_complaint(self.llm, title, description))
+                              embedding=embedding)
         self.complaints.add(complaint)
         how = "AI + keyword check" if t.used_ai else "keyword check"
         self._log(complaint, student, "Complaint Submitted", None, Status.PENDING,
                   f"Priority {priority} ({how})" + (" | crisis words found" if t.crisis else ""))
+        if duplicates:
+            # the admin can merge them from the ticket page
+            self._log(complaint, None, "Similar Complaints Found", None, None, ", ".join(duplicates))
 
         # if that manager isn't seeded yet, it just stays pending
         manager = self.users.manager_for_category(category)
         if manager:
             self._assign(complaint, manager)
-
-        self._commit()
         return complaint
+
+    def escalate_new(self, complaint: Complaint) -> None:
+        """critical: the manager's meet link goes on the ticket and the admin is alerted right away"""
+        if complaint.manager:
+            complaint.meet_link = MANAGER_MEET_LINKS.get(complaint.manager.user_id)
+            self._log(complaint, None, "Critical Escalation", None, None, "Google Meet link generated")
+        self.notes.notify_many(self.users.list_users(Role.ADMIN), "critical_filed",
+                               f"CRITICAL complaint {complaint.ticket_id} ({complaint.category}): {complaint.title}",
+                               complaint)
+
+    def notify_submitted(self, complaint: Complaint) -> None:
+        who = complaint.manager.name if complaint.manager else "the admin team"
+        self.notes.notify(complaint.student, "submitted",
+                          f"{complaint.ticket_id} was received and assigned to {who}.", complaint)
+        self._commit()
 
     def preview(self, student: User, title: str, description: str, category: str) -> dict:
         """before submitting: ai suggestion, crisis help and similar open complaints"""
@@ -178,6 +203,11 @@ class ComplaintService:
                 last = complaint.latest_confirmation
                 if last and last.student_response == PENDING:
                     last.student_response = WITHDRAWN
+                if last:
+                    # end the paused closure graph too, wherever it waits
+                    flow = self._closure()
+                    flow.resume(last, AWAIT_STUDENT, {"kind": WITHDRAWN}) or \
+                        flow.resume(last, AWAIT_ADMIN, {"kind": WITHDRAWN})
             complaint.manager_remarks = remark
             self._change_status(complaint, new_status, manager, "Status Updated", remark)
             if new_status == Status.RESOLVED:
@@ -204,13 +234,16 @@ class ComplaintService:
             raise InvalidInputError("The student said it wasn't fixed. Add a new note on what was done this time.")
 
         days = settings.confirmation_window_days
-        self.db.add(ClosureConfirmation(complaint=complaint, manager=manager, manager_note=note,
-                                        due_at=now() + timedelta(days=days)))
+        confirmation = ClosureConfirmation(complaint=complaint, manager=manager, manager_note=note,
+                                           due_at=now() + timedelta(days=days))
+        self.db.add(confirmation)
+        self.db.flush()        # gives it an id, the graph thread is named after it
         complaint.close_requested = True
         self._log(complaint, manager, "Close Requested", None, None, note)
         self.notes.notify(complaint.student, "confirm_fix",
                           f"{complaint.ticket_id} was marked resolved. Was it really fixed? "
                           f"Please answer within {days} days.", complaint)
+        self._closure().start(confirmation)      # runs to the first pause: waiting for the student
         self._commit()
         return complaint
 
@@ -223,23 +256,49 @@ class ComplaintService:
         confirmation = complaint.latest_confirmation
         if not confirmation or confirmation.student_response != PENDING:
             raise ConflictError("There's nothing to confirm on this complaint right now.")
-        confirmation.responded_at = now()
-        admins = self.users.list_users(Role.ADMIN)
+        if fixed and rating is not None and not 1 <= rating <= 5:
+            raise InvalidInputError("Rating must be 1 to 5.")
+        reason = reason.strip()
+        if not fixed and not reason:
+            raise InvalidInputError("Tell us what's still wrong.")
 
-        if fixed:
-            if rating is not None and not 1 <= rating <= 5:
-                raise InvalidInputError("Rating must be 1 to 5.")
-            confirmation.student_response = CONFIRMED
+        answer = {"kind": CONFIRMED if fixed else DISPUTED, "student_id": student.id,
+                  "rating": rating, "reason": reason, "at": now().isoformat()}
+        self._resume_or_apply(confirmation, AWAIT_STUDENT, answer,
+                              lambda: self.apply_student_answer(ticket_id, answer))
+        self._commit()
+        return complaint
+
+    def auto_confirm(self, confirmation: ClosureConfirmation, at: datetime) -> None:
+        """the 15 minute job: no answer by the deadline counts as confirmed"""
+        answer = {"kind": AUTO_CONFIRMED, "at": at.isoformat()}
+        self._resume_or_apply(confirmation, AWAIT_STUDENT, answer,
+                              lambda: self.apply_student_answer(confirmation.complaint.ticket_id, answer))
+
+    # ── closure graph steps (called by the nodes in agents/closure_graph.py) ───
+    def apply_student_answer(self, ticket_id: str, answer: dict) -> None:
+        complaint = self._get(ticket_id)
+        confirmation = complaint.latest_confirmation
+        kind = answer["kind"]
+        confirmation.student_response = kind
+        confirmation.responded_at = datetime.fromisoformat(answer["at"])
+        admins = self.users.list_users(Role.ADMIN)
+        student = self.db.get(User, answer["student_id"]) if answer.get("student_id") else None
+
+        if kind == CONFIRMED:
+            rating = answer.get("rating")
             confirmation.rating = rating
             self._log(complaint, student, "Student Confirmed", None, None,
                       f"Rating: {rating}/5" if rating else "Student confirmed the fix")
             self.notes.notify_many(admins, "student_confirmed",
                                    f"{complaint.ticket_id}: student confirmed the fix, ready to close.", complaint)
+        elif kind == AUTO_CONFIRMED:
+            self._log(complaint, None, "Auto Confirmed", None, None,
+                      f"Student didn't answer within {settings.confirmation_window_days} days")
+            self.notes.notify_many(admins, "auto_confirmed",
+                                   f"{complaint.ticket_id} was auto-confirmed (no answer from the student).", complaint)
         else:
-            reason = reason.strip()
-            if not reason:
-                raise InvalidInputError("Tell us what's still wrong.")
-            confirmation.student_response = DISPUTED
+            reason = answer["reason"]
             confirmation.student_reason = reason
             # back to in progress automatically, the close request is cancelled
             self.machine.check(complaint.status, Status.IN_PROGRESS, SYSTEM)
@@ -250,8 +309,26 @@ class ComplaintService:
             self.notes.notify_many(admins, "student_disputed", message, complaint)
             if complaint.manager:
                 self.notes.notify(complaint.manager, "student_disputed", message, complaint)
-        self._commit()
-        return complaint
+
+    def apply_close(self, ticket_id: str, d: dict) -> None:
+        complaint = self._get(ticket_id)
+        admin = self.db.get(User, d["admin_id"])
+        confirmation = complaint.latest_confirmation
+        if confirmation and complaint.close_requested:
+            confirmation.admin_decision = d["decision"]
+            confirmation.admin_note = d["reason"] or None
+        complaint.close_requested = False
+        complaint.resolved_at = now()
+        self._change_status(complaint, Status.CLOSED, admin, d["action"], d["note"])
+        self.notes.notify(complaint.student, "closed", f"{complaint.ticket_id} was closed by the admin.", complaint)
+        self._notify_supporters(complaint, f"{complaint.ticket_id} (which you supported) was closed.")
+
+    def closure_state(self, ticket_id: str) -> dict:
+        """for the admin: where the closure graph of the latest close request is paused"""
+        confirmation = self._get(ticket_id).latest_confirmation
+        if not confirmation:
+            return {"thread": None, "waiting_at": None}
+        return {"thread": f"closure-{confirmation.id}", "waiting_at": self._closure().waiting_at(confirmation)}
 
     def add_manager_update(self, ticket_id: str, manager: User, text: str) -> None:
         complaint = self._get(ticket_id)
@@ -288,14 +365,14 @@ class ComplaintService:
         else:
             action, note, decision = "Admin Force Closed", reason, "override"
 
+        d = {"kind": "close", "admin_id": admin.id, "action": action, "note": note,
+             "decision": decision, "reason": reason}
         if confirmation and complaint.close_requested:
-            confirmation.admin_decision = decision
-            confirmation.admin_note = reason or None
-        complaint.close_requested = False
-        complaint.resolved_at = now()
-        self._change_status(complaint, Status.CLOSED, admin, action, note)
-        self.notes.notify(complaint.student, "closed", f"{complaint.ticket_id} was closed by the admin.", complaint)
-        self._notify_supporters(complaint, f"{complaint.ticket_id} (which you supported) was closed.")
+            # override while the student hasn't answered resumes the first pause, otherwise the admin pause
+            at, answer = (AWAIT_STUDENT, {**d, "kind": "override"}) if waiting else (AWAIT_ADMIN, d)
+            self._resume_or_apply(confirmation, at, answer, lambda: self.apply_close(ticket_id, d))
+        else:
+            self.apply_close(ticket_id, d)       # force close without a close request: no graph
         self._commit()
         return complaint
 
@@ -418,6 +495,18 @@ class ComplaintService:
         }
 
     # ── helpers ───────────────────────────────────────────────────────────────
+    def _closure(self):
+        """the closure graph for this service, built on first use"""
+        if self._flow is None:
+            self._flow = ClosureFlow(self)
+        return self._flow
+
+    def _resume_or_apply(self, confirmation: ClosureConfirmation, at: str, answer: dict, direct) -> None:
+        """resume the paused graph. no paused graph (sqlite after a restart, or an old close request
+        from before phase 5) = do the same step directly, so nothing gets stuck"""
+        if not self._closure().resume(confirmation, at, answer):
+            direct()
+
     def _commit(self) -> None:
         """save, then forget the cached admin numbers so the next request recounts"""
         self.db.commit()
@@ -461,11 +550,7 @@ class ComplaintService:
     def _assign(self, complaint: Complaint, manager: User) -> None:
         self.machine.check(complaint.status, Status.ASSIGNED, SYSTEM)
         complaint.manager = manager
-        note = f"Assigned to {manager.name}"
-        if complaint.priority == Priority.CRITICAL:
-            complaint.meet_link = MANAGER_MEET_LINKS.get(manager.user_id)
-            note += " | CRITICAL: Google Meet link generated"
-        self._change_status(complaint, Status.ASSIGNED, None, "Assigned", note)
+        self._change_status(complaint, Status.ASSIGNED, None, "Assigned", f"Assigned to {manager.name}")
 
     def _change_status(self, complaint: Complaint, new: Status, by: User | None,
                        action: str, note: str | None) -> None:

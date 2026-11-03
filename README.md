@@ -1,6 +1,6 @@
 # EchoCampus
 
-A college grievance portal I built so students can raise complaints, see who is handling them, and get them actually fixed, with AI that sorts complaints, spots duplicates and answers rule questions from the student handbook.
+A college grievance portal I built so students can raise complaints, see who is handling them, and get them actually fixed, with AI that sorts complaints, spots duplicates, answers rule questions from the student handbook and writes a weekly report for the admin.
 
 ![AI check before submitting a complaint](docs/screenshots/ai-check.png)
 
@@ -25,11 +25,13 @@ In most colleges a complaint goes into an email or a paper form, and nobody know
 **Admin**
 - Dashboard with charts, overdue (SLA) list, close requests, and a fix-quality table (dispute rate and student ratings per manager)
 - Close complaints after the student confirmed, merge duplicates, upload the policy PDFs the assistant uses
+- A weekly report (every Monday, or on demand) written by the AI from SQL numbers. Every number in it is checked, otherwise a plain summary is used
 
 **Behind the scenes**
 - JWT login, role checks on every route, rate limits (5 complaints per hour, 10 login tries per 15 minutes)
 - SLA deadlines by priority, and a job every 15 minutes that escalates overdue complaints
 - In-app notifications (bell) and email for status changes
+- Submitting and closing run as LangGraph graphs. Closing pauses for the student and then the admin, and the paused state is saved in Postgres, so it survives a restart
 
 ## Tech stack
 
@@ -37,6 +39,7 @@ In most colleges a complaint goes into an email or a paper form, and nobody know
 - **Database:** PostgreSQL on Neon with pgvector (a local SQLite file works for development)
 - **Cache / rate limits:** Redis on Upstash (falls back to memory when not set)
 - **AI:** Google Gemini through the `google-genai` SDK: `gemini-3.5-flash-lite` for text, `gemini-embedding-2` (768 dimensions) for embeddings
+- **Agents:** LangGraph 1.2 (StateGraph, `interrupt` for human-in-the-loop) with `langgraph-checkpoint-postgres`
 - **Frontend:** React 18, Vite 5, Tailwind CSS 3, React Router 6, TanStack Query 5, Recharts 3, lucide-react (plain JavaScript)
 - **Tests:** pytest (fake AI in tests, plus optional real-Postgres tests)
 
@@ -48,6 +51,8 @@ flowchart LR
     API --> S[services: rules, status machine, SLA]
     S --> R[repositories]
     R --> DB[(PostgreSQL + pgvector)]
+    S --> AG[agents/: intake + closure graphs, weekly insights]
+    AG --> AI
     S --> AI[ai/: triage, duplicates, RAG, reply drafts]
     AI --> G[Gemini]
     S --> C[(Redis)]
@@ -58,6 +63,8 @@ flowchart LR
 - On submit, the complaint text goes through **AI triage** (category, priority, summary). The final priority is never lower than the keyword rules, so the AI can raise a priority but never lower it. If the AI fails, the keyword rules are used.
 - Each complaint gets an **embedding** (768 numbers that capture its meaning). pgvector finds open complaints with a similar meaning, which is how duplicates show up.
 - The **policy assistant** is RAG: the handbook in `data/policies/` is split into chunks, embedded and stored. A question is embedded, the closest chunks are found, and Gemini answers only from them with citations. If nothing matches, it says so.
+- **Submitting** runs as a LangGraph graph: classify → check duplicates → route to the manager → escalate if Critical → notify. If an AI step fails, the graph takes the keyword path.
+- **Closing** is a second graph that pauses twice with `interrupt()`, once waiting for the student and once for the admin. The paused state is saved in Postgres, and the student's answer or the admin's click resumes it. Both diagrams are in [docs/graphs.md](docs/graphs.md).
 - More detail per step is in my learning notes (kept outside the repo) and in [docs/API.md](docs/API.md).
 
 ## Run it locally
@@ -101,7 +108,7 @@ cd frontend && npm run dev                          # frontend on port 5173 (sec
 
 ## API routes
 
-The main ones (all 42 are in [docs/API.md](docs/API.md)):
+The main ones (all 45 are in [docs/API.md](docs/API.md)):
 
 | Method | Route | What it does |
 |---|---|---|
@@ -116,19 +123,20 @@ The main ones (all 42 are in [docs/API.md](docs/API.md)):
 | POST | `/admin/complaints/{ticket_id}/close` | admin closes after the student confirmed |
 | POST | `/assistant/ask` | policy question, answered from the handbook with page citations |
 | GET | `/admin/stats` | dashboard numbers and charts |
+| POST | `/admin/insights/run` | write the weekly AI report now |
 
 ## Project structure
 
 ```text
 EchoCampus/
 |-- backend/
-|   |-- app/          api routes, services, repositories, models, ai, jobs
+|   |-- app/          api routes, services, repositories, models, ai, agents, jobs
 |   |-- alembic/      database migrations
 |   `-- tests/
 |-- frontend/         React + Vite app
 |-- data/policies/    policy PDFs the assistant answers from
-|-- scripts/          seed, demo data, load policies, reset passwords
-`-- docs/             API list and screenshots
+|-- scripts/          seed, demo data, load policies, export graphs, reset passwords
+`-- docs/             API list, graph diagrams and screenshots
 ```
 
 ## Running tests
@@ -144,11 +152,13 @@ Tests use a temporary SQLite database and a fake AI, so they never touch real da
 - Keeping the AI safe: it may only raise a priority (the keyword rules are the floor), crisis help never depends on it, and the policy assistant has to cite a real source or say "not in the documents".
 - A live test showed that `gemini-embedding-2` turns a plain list of texts into one vector. Sending each text as its own `Content` fixed it, and a check now fails loudly if the count is wrong.
 - Moving from SQLite to Postgres with Alembic: real enum types, a sequence for student IDs (so two students can't get the same one), and making sure tests can never write into the real database.
+- LangGraph's Postgres setup builds its indexes with `CREATE INDEX CONCURRENTLY`, which waits for every open transaction, so the first close request hung. The checkpoint tables are now created at startup, before any request runs.
 
 ## Known limitations and what's next
 
 - Not deployed yet. Uploaded files are stored on the local disk; cloud storage comes with deployment.
 - The Gemini free tier limits requests per minute, so the app throttles its own AI calls and falls back to the keyword rules when the AI is busy.
-- Next: LangGraph agents for the submission and closing flows, and a weekly AI insights report for the admin.
+- With a local SQLite database, paused closing graphs are kept in memory only. After a restart the same step runs directly with the same rules, so nothing gets stuck.
+- Next: deployment (Docker, CI, Render and Vercel).
 
 ![Policy assistant answering from the handbook](docs/screenshots/policy-assistant.png)

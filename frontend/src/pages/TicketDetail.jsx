@@ -218,6 +218,13 @@ function AdminPanel({ complaint }) {
     onError: (e) => toast.error(e.message),
   });
 
+  // where the langgraph closure graph is paused (admin only, for the demo)
+  const { data: graph } = useQuery({
+    queryKey: ["closure-state", t, complaint.updated_at],
+    queryFn: () => api(`/admin/complaints/${t}/closure-state`),
+    enabled: !!complaint.confirmation,
+  });
+
   if (complaint.status === "Closed") return null;
   const response = complaint.confirmation?.response;
   const ready = complaint.close_requested && ["confirmed", "auto_confirmed"].includes(response);
@@ -230,6 +237,12 @@ function AdminPanel({ complaint }) {
           {ready && <p className="text-sm">The student {response === "confirmed" ? "confirmed the fix" : "didn't answer in time (auto-confirmed)"}.</p>}
           {waiting && <p className="text-sm text-amber-600">Waiting for the student to confirm. Closing now needs a reason.</p>}
           {!complaint.close_requested && <p className="text-sm text-slate-500">Resolved, but the manager hasn't asked to close it yet.</p>}
+          {graph?.waiting_at && (
+            <p className="w-full text-xs text-slate-500">
+              Closure graph <span className="font-mono">{graph.thread}</span> is paused at{" "}
+              <span className="font-mono">{graph.waiting_at}</span>
+            </p>
+          )}
           {ready ? (
             <button className="btn-primary" onClick={() => close.mutate({ force: false })} disabled={close.isPending}>Officially close</button>
           ) : (

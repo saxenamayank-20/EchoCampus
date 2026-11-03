@@ -105,12 +105,14 @@ def test_escalation_notifies_admin_and_manager(client, mailbox, seeded_db):
     admin, gm = login(client, "AD100"), login(client, "GM103")
 
     n = client.get("/notifications", headers=admin).json()
-    assert n["unread"] == 1 and n["items"][0]["ticket_id"] == t and n["items"][0]["type"] == "sla_escalated"
+    # critical: one alert when filed (intake graph), one when the sla passed
+    assert n["unread"] == 2 and n["items"][0]["ticket_id"] == t and n["items"][0]["type"] == "sla_escalated"
+    assert n["items"][1]["type"] == "critical_filed"
     assert client.get("/notifications", headers=gm).json()["unread"] == 1
     assert client.get(f"/complaints?escalated=true", headers=admin).json()["total"] == 1
 
     client.post(f"/notifications/{n['items'][0]['id']}/read", headers=admin)
-    assert client.get("/notifications", headers=admin).json()["unread"] == 0
+    assert client.get("/notifications", headers=admin).json()["unread"] == 1
     # someone else's notification can't be touched
     other = client.get("/notifications", headers=gm).json()["items"][0]["id"]
     assert client.post(f"/notifications/{other}/read", headers=admin).status_code == 404

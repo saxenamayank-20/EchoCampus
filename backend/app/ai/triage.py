@@ -53,11 +53,16 @@ Title: {title}
 Description: {description}"""
 
 
-def triage(llm: LLMClient, title: str, description: str, category: str) -> Triage:
-    keyword = KeywordPriorityDetector().detect(title, description, category)
+def keyword_triage(title: str, description: str, category: str) -> Triage:
+    """no ai at all: keyword priority + the student's own category"""
     crisis = is_crisis(title, description)
-    if crisis:
-        keyword = Priority.CRITICAL       # crisis is always critical, no matter what the ai says
+    keyword = Priority.CRITICAL if crisis else KeywordPriorityDetector().detect(title, description, category)
+    return Triage(category, keyword, "keyword", keyword, None, None, None, False, crisis)
+
+
+def triage(llm: LLMClient, title: str, description: str, category: str) -> Triage:
+    fallback = keyword_triage(title, description, category)
+    keyword, crisis = fallback.priority, fallback.crisis   # crisis is always critical, whatever the ai says
 
     key = "triage:" + hashlib.sha256(f"{title}|{description}|{category}".encode()).hexdigest()
     cache = get_cache()
@@ -72,8 +77,7 @@ def triage(llm: LLMClient, title: str, description: str, category: str) -> Triag
                                                            title=title[:200], description=description[:3000]),
                                    TriageAnswer)
     except LLMError:
-        # fallback: keyword priority + the student's own category
-        return Triage(category, keyword, "keyword", keyword, None, None, None, False, crisis)
+        return fallback
 
     suggested = answer.category if answer.category in CATEGORIES else category
     ai_wins = RANK[answer.priority] >= RANK[keyword]   # equal = the ai agreed

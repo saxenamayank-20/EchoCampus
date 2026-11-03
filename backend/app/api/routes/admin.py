@@ -2,10 +2,14 @@ from typing import Annotated
 
 from fastapi import APIRouter, BackgroundTasks, Query
 
-from backend.app.core.deps import DB, Admin, Sender
+from backend.app.agents.insights import latest_reports, run_weekly_insights
+from backend.app.core.config import settings
+from backend.app.core.deps import DB, LLM, Admin, Sender
 from backend.app.core.enums import Role
+from backend.app.core.rate_limit import hit
 from backend.app.schemas.complaint import (AdminCloseIn, AdminMessageIn, ComplaintOut, ManagerUpdateOut,
                                            MergeIn, Page)
+from backend.app.schemas.insight import InsightOut
 from backend.app.schemas.user import MessageOut, UserOut
 from backend.app.services.complaint_service import ComplaintService
 from backend.app.services.email_service import status_change_mail
@@ -72,3 +76,22 @@ def quality(db: DB, _: Admin):
 def merge(ticket_id: str, body: MergeIn, db: DB, admin: Admin):
     """ticket_id is a duplicate: close it and add its student as a supporter of `into`"""
     return ComplaintOut.of(ComplaintService(db).merge(ticket_id, body.into.strip(), admin))
+
+
+@router.get("/complaints/{ticket_id}/closure-state")
+def closure_state(ticket_id: str, db: DB, _: Admin):
+    """where the closure graph is paused: await_student, await_admin or none"""
+    return ComplaintService(db).closure_state(ticket_id)
+
+
+@router.get("/insights", response_model=list[InsightOut])
+def insights(db: DB, _: Admin):
+    """the latest weekly reports, newest first"""
+    return [InsightOut.of(r) for r in latest_reports(db)]
+
+
+@router.post("/insights/run", response_model=InsightOut)
+def run_insights(db: DB, admin: Admin, llm: LLM):
+    """write this week's report now (the scheduler also does it every monday)"""
+    hit(f"ai:{admin.id}", settings.ai_requests_per_hour, 3600)
+    return InsightOut.of(run_weekly_insights(db, llm, by=admin))

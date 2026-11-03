@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from sqlalchemy import func, select
 
-from backend.app.ai.duplicates import embed_complaint
+from backend.app.agents.checkpointer import get_checkpointer
 from backend.app.ai.embeddings import complaint_text
 from backend.app.ai.llm_client import DisabledClient, LLMError, get_llm
 from backend.app.core.config import settings
@@ -111,6 +111,7 @@ def main() -> int:
     llm = get_llm() if use_ai else DisabledClient()
     settings.rate_limit_complaints_per_hour = 10_000      # this script submits many at once
     rng = random.Random(7)                                # same demo data every time
+    get_checkpointer()      # before the session opens: its first setup waits for open transactions
 
     with SessionLocal() as db:
         if db.scalar(select(func.count()).select_from(Complaint)):

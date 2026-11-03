@@ -36,3 +36,18 @@ class ComplaintSupporter(Base):
 
     student: Mapped[User] = relationship()
     complaint: Mapped["Complaint"] = relationship(back_populates="supporters")  # noqa: F821
+
+
+class InsightReport(Base):
+    """the weekly ai report for the admin. stats = the exact numbers it was written from"""
+
+    __tablename__ = "insight_reports"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    period_start: Mapped[datetime]
+    period_end: Mapped[datetime]
+    stats: Mapped[str] = mapped_column(Text)              # json
+    report: Mapped[str] = mapped_column(Text)
+    used_ai: Mapped[bool]                                 # false = the plain template (ai down / failed the check)
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))   # none = the weekly job
+    created_at: Mapped[datetime] = mapped_column(default=now, index=True)

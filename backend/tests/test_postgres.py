@@ -14,7 +14,9 @@ from alembic.config import Config
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
+from backend.app import models  # noqa: F401  so Base knows every table
 from backend.app.core.enums import Priority, Status
+from backend.app.db.base import Base
 from backend.app.db.seed import seed_staff
 from backend.app.db.session import make_engine, normalize_url
 from backend.app.repositories.complaint_repository import ComplaintFilters
@@ -31,13 +33,23 @@ def pg_url():
     admin_engine = create_engine(normalize_url(BASE_URL))
     with admin_engine.begin() as conn:
         conn.execute(text(f'CREATE SCHEMA "{schema}"'))
-    # every connection of this url sees ONLY the test schema. public must not be on the path,
-    # or alembic finds the real alembic_version table there and writes into the real tables
+    # the test schema comes first, so every table is created and read there. public is last only so
+    # the pgvector type (installed in public) is visible. alembic_version is pinned to the test
+    # schema, otherwise alembic finds the real one in public and skips creating the tables
     sep = "&" if "?" in BASE_URL else "?"
-    url = normalize_url(BASE_URL) + f"{sep}options={quote(f'-csearch_path={schema}')}"
+    url = normalize_url(BASE_URL) + f"{sep}options={quote(f'-csearch_path={schema},public')}"
     cfg = Config("alembic.ini")
     cfg.attributes["url"] = url
+    cfg.attributes["version_schema"] = schema
     command.upgrade(cfg, "head")
+    with admin_engine.connect() as conn:
+        here = set(conn.scalars(text("SELECT table_name FROM information_schema.tables WHERE table_schema = :s"),
+                                {"s": schema}))
+    missing = set(Base.metadata.tables) - here
+    if missing:    # never let a test fall through to the real tables in public
+        with admin_engine.begin() as conn:
+            conn.execute(text(f'DROP SCHEMA "{schema}" CASCADE'))
+        pytest.exit(f"test schema is missing tables {missing}, stopping before touching real data")
     yield url
     with admin_engine.begin() as conn:
         conn.execute(text(f'DROP SCHEMA "{schema}" CASCADE'))
@@ -85,3 +97,30 @@ def test_full_flow_on_postgres(pg):
 
 def test_vector_extension_available(pg):
     assert pg.scalar(text("SELECT count(*) FROM pg_extension WHERE extname = 'vector'")) == 1
+
+
+def test_paused_closure_survives_a_restart(pg, pg_url, monkeypatch):
+    """the closure graph pauses in postgres, a 'restart' (new saver + new session) resumes it"""
+    from backend.app.agents.checkpointer import get_checkpointer, reset_checkpointer
+    from backend.app.core.config import settings
+    monkeypatch.setattr(settings, "database_url", pg_url)
+    reset_checkpointer()
+    pg.commit()
+    get_checkpointer()      # creates its tables now, while no transaction of ours is open
+    seed_staff(pg, {uid: "Test@1234" for uid in ("AD100", "GM102")})
+    student = UserService(pg).register_student("Graph Test", "graph@college.edu", "Student@123", "MBA")
+    service = ComplaintService(pg)
+    gm = UserService(pg).get("GM102")
+    c = service.submit(student, "Wifi slow", "library wifi is slow", "IT/Internet")
+    service.update_status(c.ticket_id, "In Progress", gm)
+    service.update_status(c.ticket_id, "Resolved", gm)
+    service.request_close(c.ticket_id, gm, "New router installed")
+    assert type(get_checkpointer()).__name__ == "PostgresSaver"
+    assert pg.scalar(text("SELECT count(*) FROM checkpoints")) > 0   # saved in the test schema
+
+    reset_checkpointer()                       # like a backend restart: nothing left in memory
+    later = ComplaintService(pg)
+    assert later.closure_state(c.ticket_id)["waiting_at"] == "await_student"
+    later.student_respond(c.ticket_id, student, fixed=True, rating=4)
+    assert later.closure_state(c.ticket_id)["waiting_at"] == "await_admin"
+    reset_checkpointer()
