@@ -3,7 +3,7 @@ import pytest
 
 from backend.app.agents.intake_graph import build_intake_graph, run_intake
 from backend.app.ai.llm_client import LLMClient
-from backend.app.core.enums import Priority, Role, Status
+from backend.app.core.enums import Priority, Status
 from backend.app.services.complaint_service import ComplaintService
 from backend.app.services.notification_service import NotificationService
 from backend.app.services.user_service import UserService
@@ -110,6 +110,7 @@ def test_dispute_ends_the_round_and_a_new_request_starts_a_new_thread(flow):
 
 def test_auto_confirm_resumes_the_graph(flow, seeded_db):
     from datetime import timedelta
+
     from backend.app.db.base import now
     from backend.app.services.confirmation_service import ConfirmationService
     from backend.tests.conftest import FakeSender
@@ -145,7 +146,7 @@ def test_closure_diagram_has_both_pauses():
 
 
 # ── weekly insights ──────────────────────────────────────────────────────────
-from backend.app.agents.insights import numbers_ok, run_weekly_insights, weekly_stats   # noqa: E402
+from backend.app.agents.insights import numbers_ok, run_weekly_insights, weekly_stats  # noqa: E402
 
 
 @pytest.fixture

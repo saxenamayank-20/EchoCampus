@@ -7,8 +7,13 @@ from backend.app.core.config import settings
 from backend.app.core.enums import Role, Status
 from backend.app.models import Attachment, User
 from backend.app.services.complaint_service import ComplaintService
-from backend.app.services.errors import (InvalidInputError, NotFoundError, PermissionDeniedError,
-                                         TooLargeError, UnsupportedFileError)
+from backend.app.services.errors import (
+    InvalidInputError,
+    NotFoundError,
+    PermissionDeniedError,
+    TooLargeError,
+    UnsupportedFileError,
+)
 from backend.app.services.file_types import detect_file_type
 from backend.app.services.storage import LocalStorage
 

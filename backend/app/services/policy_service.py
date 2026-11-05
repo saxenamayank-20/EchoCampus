@@ -7,8 +7,14 @@ from backend.app.ai.llm_client import LLMClient, LLMError
 from backend.app.ai.pdf import extract_pages
 from backend.app.core.enums import Role
 from backend.app.models import PolicyChunk, PolicyDocument, User
-from backend.app.services.errors import (AIUnavailableError, InvalidInputError, NotFoundError,
-                                         PermissionDeniedError, TooLargeError, UnsupportedFileError)
+from backend.app.services.errors import (
+    AIUnavailableError,
+    InvalidInputError,
+    NotFoundError,
+    PermissionDeniedError,
+    TooLargeError,
+    UnsupportedFileError,
+)
 from backend.app.services.file_types import detect_file_type
 from backend.app.services.storage import LocalStorage
 
@@ -78,7 +84,7 @@ class PolicyService:
         except LLMError as e:
             self.db.rollback()
             raise AIUnavailableError("AI is unavailable, the policy couldn't be indexed. Try again later.") from e
-        for c, v in zip(chunks, vectors):
+        for c, v in zip(chunks, vectors, strict=True):
             self.db.add(PolicyChunk(document=doc, chunk_index=c.index, page=c.page, content=c.text, embedding=v))
 
     def _get(self, doc_id: int) -> PolicyDocument:

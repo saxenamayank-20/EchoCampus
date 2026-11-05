@@ -44,9 +44,9 @@ def suggest_reply(db: Session, llm: LLMClient, complaint: Complaint) -> dict:
 
     past_text = "\n".join(f"- {c.title}: {c.manager_remarks}" for c, _ in past) or "- none found"
     try:
-        draft = llm.generate_json("reply", PROMPT.format(category=complaint.category, priority=complaint.priority,
-                                                         title=complaint.title, description=complaint.description[:2000],
-                                                         past=past_text), ReplyDraft)
+        prompt = PROMPT.format(category=complaint.category, priority=complaint.priority, title=complaint.title,
+                               description=complaint.description[:2000], past=past_text)
+        draft = llm.generate_json("reply", prompt, ReplyDraft)
     except LLMError as e:
         raise AIUnavailableError("AI is unavailable right now, please write the reply yourself.") from e
     return {

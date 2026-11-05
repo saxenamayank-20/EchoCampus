@@ -8,8 +8,7 @@ from backend.app.core.security import hash_password, validate_password, verify_p
 from backend.app.models import User
 from backend.app.models.user import STUDENT_ID_SEQ
 from backend.app.repositories.user_repository import UserRepository
-from backend.app.services.errors import (AuthenticationError, ConflictError, InvalidInputError,
-                                         NotVerifiedError)
+from backend.app.services.errors import AuthenticationError, ConflictError, InvalidInputError, NotVerifiedError
 
 
 class UserService:

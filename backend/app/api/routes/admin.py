@@ -3,12 +3,12 @@ from typing import Annotated
 from fastapi import APIRouter, BackgroundTasks, Query
 
 from backend.app.agents.insights import latest_reports, run_weekly_insights
+from backend.app.ai.usage import ai_usage
 from backend.app.core.config import settings
 from backend.app.core.deps import DB, LLM, Admin, Sender
 from backend.app.core.enums import Role
 from backend.app.core.rate_limit import hit
-from backend.app.schemas.complaint import (AdminCloseIn, AdminMessageIn, ComplaintOut, ManagerUpdateOut,
-                                           MergeIn, Page)
+from backend.app.schemas.complaint import AdminCloseIn, AdminMessageIn, ComplaintOut, ManagerUpdateOut, MergeIn, Page
 from backend.app.schemas.insight import InsightOut
 from backend.app.schemas.user import MessageOut, UserOut
 from backend.app.services.complaint_service import ComplaintService
@@ -95,3 +95,9 @@ def run_insights(db: DB, admin: Admin, llm: LLM):
     """write this week's report now (the scheduler also does it every monday)"""
     hit(f"ai:{admin.id}", settings.ai_requests_per_hour, 3600)
     return InsightOut.of(run_weekly_insights(db, llm, by=admin))
+
+
+@router.get("/ai-usage")
+def usage(db: DB, _: Admin, days: Annotated[int, Query(ge=1, le=365)] = 30):
+    """ai calls, failures, tokens and speed per feature for the last `days` days"""
+    return ai_usage(db, days)

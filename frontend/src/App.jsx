@@ -11,6 +11,7 @@ import MyTickets from "./pages/student/MyTickets";
 import Assistant from "./pages/student/Assistant";
 import NewComplaint from "./pages/student/NewComplaint";
 import Policies from "./pages/admin/Policies";
+import AiUsage from "./pages/admin/AiUsage";
 import TicketDetail from "./pages/TicketDetail";
 
 // charts library is big, only load it when the admin opens the overview
@@ -51,6 +52,7 @@ export default function App() {
             <Route path="/admin/updates" element={<ManagerUpdates />} />
             <Route path="/admin/users" element={<UsersPage />} />
             <Route path="/admin/policies" element={<Policies />} />
+            <Route path="/admin/ai-usage" element={<AiUsage />} />
           </Route>
 
           <Route path="*" element={<NotFoundPage />} />

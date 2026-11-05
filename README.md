@@ -26,6 +26,7 @@ In most colleges a complaint goes into an email or a paper form, and nobody know
 - Dashboard with charts, overdue (SLA) list, close requests, and a fix-quality table (dispute rate and student ratings per manager)
 - Close complaints after the student confirmed, merge duplicates, upload the policy PDFs the assistant uses
 - A weekly report (every Monday, or on demand) written by the AI from SQL numbers. Every number in it is checked, otherwise a plain summary is used
+- An AI usage page: calls, failures, tokens and speed (average and p95) per AI feature
 
 **Behind the scenes**
 - JWT login, role checks on every route, rate limits (5 complaints per hour, 10 login tries per 15 minutes)
@@ -41,7 +42,7 @@ In most colleges a complaint goes into an email or a paper form, and nobody know
 - **AI:** Google Gemini through the `google-genai` SDK: `gemini-3.5-flash-lite` for text, `gemini-embedding-2` (768 dimensions) for embeddings
 - **Agents:** LangGraph 1.2 (StateGraph, `interrupt` for human-in-the-loop) with `langgraph-checkpoint-postgres`
 - **Frontend:** React 18, Vite 5, Tailwind CSS 3, React Router 6, TanStack Query 5, Recharts 3, lucide-react (plain JavaScript)
-- **Tests:** pytest (fake AI in tests, plus optional real-Postgres tests)
+- **Tests:** pytest (fake AI in tests, plus optional real-Postgres tests), ruff for linting, GitHub Actions runs both on every push
 
 ## How it works
 
@@ -80,7 +81,7 @@ pip install -r requirements.txt
 cd frontend && npm install && cd ..
 ```
 
-Create a `.env` file in the project root. Variable names (fill in your own values):
+Copy `.env.example` to `.env` in the project root and fill in your own values (`frontend/.env.example` has the one frontend variable). The variables:
 
 ```
 DATABASE_URL            # Neon url; leave empty to use a local SQLite file
@@ -108,7 +109,7 @@ cd frontend && npm run dev                          # frontend on port 5173 (sec
 
 ## API routes
 
-The main ones (all 45 are in [docs/API.md](docs/API.md)):
+The main ones (all 46 are in [docs/API.md](docs/API.md)):
 
 | Method | Route | What it does |
 |---|---|---|
@@ -143,6 +144,7 @@ EchoCampus/
 
 ```bash
 pytest
+ruff check backend scripts    # lint, same as CI
 ```
 
 Tests use a temporary SQLite database and a fake AI, so they never touch real data or use the Gemini quota. Set `TEST_DATABASE_URL` to a Postgres url to also run the real-Postgres tests (they use a throwaway schema).
@@ -159,6 +161,6 @@ Tests use a temporary SQLite database and a fake AI, so they never touch real da
 - Not deployed yet. Uploaded files are stored on the local disk; cloud storage comes with deployment.
 - The Gemini free tier limits requests per minute, so the app throttles its own AI calls and falls back to the keyword rules when the AI is busy.
 - With a local SQLite database, paused closing graphs are kept in memory only. After a restart the same step runs directly with the same rules, so nothing gets stuck.
-- Next: deployment (Docker, CI, Render and Vercel).
+- Next: deployment (Docker, Render and Vercel) and cloud storage for attachments.
 
 ![Policy assistant answering from the handbook](docs/screenshots/policy-assistant.png)

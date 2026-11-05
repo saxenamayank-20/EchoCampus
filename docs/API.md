@@ -60,6 +60,7 @@ Every route except login/register/health needs `Authorization: Bearer <token>`. 
 | POST | `/admin/complaints/{ticket_id}/message` | message to the assigned manager |
 | GET | `/admin/insights` | the latest weekly reports, newest first |
 | POST | `/admin/insights/run` | write this week's report now (the scheduler also does it every monday) |
+| GET | `/admin/ai-usage` | ai calls, failures, tokens and speed per feature (`?days=30`) |
 | GET | `/admin/manager-updates` | managers' progress notes, paged |
 | GET | `/admin/quality` | dispute rate and student ratings per manager and category |
 | POST | `/admin/sla/run` | same job the scheduler runs every 15 minutes, on demand |

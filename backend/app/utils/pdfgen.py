@@ -17,7 +17,7 @@ def make_pdf(pages: list[str], font_size: int = 11) -> bytes:
         lines = []
         for para in text.split("\n"):
             lines.extend(textwrap.wrap(para, 90) or [""])
-        body = "BT /F1 %d Tf 14 TL 50 790 Td\n" % font_size
+        body = f"BT /F1 {font_size} Tf 14 TL 50 790 Td\n"
         body += "".join(f"({_escape(line)}) Tj T*\n" for line in lines[:52]) + "ET"
         stream = body.encode("latin-1", "replace")
         page_id, content_id = 3 + 2 * i, 4 + 2 * i

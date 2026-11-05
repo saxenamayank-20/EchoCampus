@@ -7,6 +7,7 @@ os.environ["DATABASE_URL"] = "sqlite://"
 os.environ["RUN_SCHEDULER"] = "false"
 # empty env values count as "not set" (env_ignore_empty), so switch these off on the settings object itself
 from backend.app.core.config import settings as _settings  # noqa: E402
+
 _settings.redis_url = ""            # in-memory cache
 _settings.smtp_host = ""            # emails are only printed
 _settings.gemini_api_key = ""       # no real ai calls, tests use a fake

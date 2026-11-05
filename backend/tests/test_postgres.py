@@ -12,6 +12,7 @@ import pytest
 from alembic import command
 from alembic.config import Config
 from sqlalchemy import create_engine, text
+from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import sessionmaker
 
 from backend.app import models  # noqa: F401  so Base knows every table
@@ -74,7 +75,7 @@ def test_enums_are_real_postgres_types(pg):
     for name in ("role", "status", "priority"):
         assert pg.scalar(text(f"SELECT typtype FROM pg_type WHERE oid = to_regtype('{name}')")) == "e"
     # a value outside the enum is refused by the database itself
-    with pytest.raises(Exception):
+    with pytest.raises(DBAPIError):
         pg.execute(text("SELECT 'Done'::status"))
     pg.rollback()
 

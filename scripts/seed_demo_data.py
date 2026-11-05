@@ -21,7 +21,6 @@ from backend.app.agents.checkpointer import get_checkpointer
 from backend.app.ai.embeddings import complaint_text
 from backend.app.ai.llm_client import DisabledClient, LLMError, get_llm
 from backend.app.core.config import settings
-from backend.app.db.base import now
 from backend.app.db.seed import seed_staff
 from backend.app.db.session import SessionLocal
 from backend.app.models import Complaint, ComplaintSupporter, User
@@ -144,7 +143,7 @@ def main() -> int:
             # one batched embedding call for all complaints (the client also caches them)
             try:
                 vectors = llm.embed("embedding", [complaint_text(c.title, c.description) for c in made])
-                for c, v in zip(made, vectors):
+                for c, v in zip(made, vectors, strict=True):
                     c.embedding = v
                 db.commit()
                 print(f"[DEMO] embeddings saved for {len(made)} complaints")

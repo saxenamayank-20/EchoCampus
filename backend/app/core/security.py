@@ -1,6 +1,6 @@
 import re
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import bcrypt
 import jwt
@@ -43,7 +43,7 @@ def validate_password(password: str) -> tuple[bool, str]:
 
 def create_access_token(user_id: str, role: str) -> str:
     """signed token with who you are (sub), your role and when it runs out (exp)"""
-    expire = datetime.now(timezone.utc) + timedelta(minutes=settings.jwt_expire_minutes)
+    expire = datetime.now(UTC) + timedelta(minutes=settings.jwt_expire_minutes)
     return jwt.encode({"sub": user_id, "role": role, "exp": expire}, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
 

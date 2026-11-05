@@ -39,8 +39,9 @@ class ConfirmationService:
                 message = f"Reminder: is {ticket.ticket_id} fixed? It will be auto-confirmed on {c.due_at:%d %b %H:%M}."
                 self.notes.notify(ticket.student, "confirm_reminder", message, ticket)
                 # the link only opens the portal, the student still has to log in to answer
+                link = f"{settings.frontend_origin}/tickets/{ticket.ticket_id}"
                 self.sender.send(ticket.student.email, f"EchoCampus: please confirm {ticket.ticket_id}",
-                                 f"{message}\n\nLog in to answer: {settings.frontend_origin}/tickets/{ticket.ticket_id}")
+                                 f"{message}\n\nLog in to answer: {link}")
                 sent += 1
         self.db.commit()
         return sent

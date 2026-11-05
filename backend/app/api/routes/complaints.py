@@ -6,8 +6,18 @@ from fastapi import APIRouter, Query, status
 from backend.app.core.deps import DB, LLM, CurrentUser, Student
 from backend.app.core.enums import Priority, Status
 from backend.app.repositories.complaint_repository import ComplaintFilters
-from backend.app.schemas.complaint import (ComplaintIn, ComplaintOut, ConfirmIn, DuplicateOut, HistoryOut,
-                                           Page, PreviewIn, PreviewOut, PriorityPreviewOut, TextIn)
+from backend.app.schemas.complaint import (
+    ComplaintIn,
+    ComplaintOut,
+    ConfirmIn,
+    DuplicateOut,
+    HistoryOut,
+    Page,
+    PreviewIn,
+    PreviewOut,
+    PriorityPreviewOut,
+    TextIn,
+)
 from backend.app.schemas.user import MessageOut
 from backend.app.services.complaint_service import ComplaintService
 from backend.app.services.priority import KeywordPriorityDetector

@@ -5,8 +5,13 @@ import pytest
 from backend.app.core.constants import CATEGORY_MANAGER_MAP
 from backend.app.core.enums import Priority, Role, Status
 from backend.app.services.complaint_service import ComplaintService, generate_ticket_id
-from backend.app.services.errors import (ConflictError, DomainError, InvalidInputError,
-                                         InvalidTransitionError, PermissionDeniedError)
+from backend.app.services.errors import (
+    ConflictError,
+    DomainError,
+    InvalidInputError,
+    InvalidTransitionError,
+    PermissionDeniedError,
+)
 from backend.app.services.user_service import UserService
 from backend.tests.conftest import TEST_PASSWORD
 

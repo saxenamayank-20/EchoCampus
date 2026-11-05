@@ -67,7 +67,8 @@ class Settings(BaseSettings):
     duplicate_threshold: float = 0.85
     rag_min_similarity: float = 0.45   # below this, the policy search says "not in the documents"
     ai_requests_per_hour: int = 20     # per user, for preview / assistant / reply drafts
-    counsellor_contact: str = "Student counselling (free, confidential): counsellor@echocampus.example, Student Welfare Office"
+    counsellor_contact: str = ("Student counselling (free, confidential): counsellor@echocampus.example, "
+                               "Student Welfare Office")
     crisis_helpline: str = "Tele-MANAS 14416 (free, 24x7)"
 
     def sla_hours(self, priority: str) -> int:

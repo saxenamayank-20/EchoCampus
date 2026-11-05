@@ -13,8 +13,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from backend.app.agents.checkpointer import get_checkpointer
 from backend.app.api.errors import register_error_handlers
-from backend.app.api.routes import (admin, attachments, auth, complaints, manager, meta, notifications,
-                                    policies)
+from backend.app.api.routes import admin, attachments, auth, complaints, manager, meta, notifications, policies
 from backend.app.core.config import settings
 from backend.app.db.seed import seed_staff
 from backend.app.db.session import SessionLocal

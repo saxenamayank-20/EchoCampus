@@ -9,6 +9,7 @@ import json
 import threading
 import time
 from collections import deque
+from functools import partial
 from typing import TypeVar
 
 from pydantic import BaseModel, ValidationError
@@ -159,13 +160,15 @@ class GeminiClient(LLMClient):
             config = self.types.EmbedContentConfig(output_dimensionality=self.dim)
             # each text as its own Content: gemini-embedding-2 joins a plain list of strings into ONE vector
             contents = [self.types.Content(parts=[self.types.Part(text=texts[i])]) for i in batch]
-            response, started = self._call(feature, self.embedding_model, lambda: self.client.models.embed_content(
-                model=self.embedding_model, contents=contents, config=config))
+            # partial fixes this batch's values now (a lambda would read the loop variables later)
+            embed = partial(self.client.models.embed_content, model=self.embedding_model, contents=contents,
+                            config=config)
+            response, started = self._call(feature, self.embedding_model, embed)
             if len(response.embeddings) != len(batch):
                 self.log(feature, self.embedding_model, started, False, error="wrong number of vectors")
                 raise LLMError("AI returned the wrong number of embeddings.")
             self.log(feature, self.embedding_model, started, True)
-            for i, emb in zip(batch, response.embeddings):
+            for i, emb in zip(batch, response.embeddings, strict=True):
                 found[i] = list(emb.values)
                 cache.set(keys[i], json.dumps(found[i]), EMBED_CACHE_TTL)
         return [found[i] for i in range(len(texts))]

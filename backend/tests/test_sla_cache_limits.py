@@ -109,7 +109,7 @@ def test_escalation_notifies_admin_and_manager(client, mailbox, seeded_db):
     assert n["unread"] == 2 and n["items"][0]["ticket_id"] == t and n["items"][0]["type"] == "sla_escalated"
     assert n["items"][1]["type"] == "critical_filed"
     assert client.get("/notifications", headers=gm).json()["unread"] == 1
-    assert client.get(f"/complaints?escalated=true", headers=admin).json()["total"] == 1
+    assert client.get("/complaints?escalated=true", headers=admin).json()["total"] == 1
 
     client.post(f"/notifications/{n['items'][0]['id']}/read", headers=admin)
     assert client.get("/notifications", headers=admin).json()["unread"] == 1

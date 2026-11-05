@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import {
-  BarChart3, BookOpen, CheckSquare, FilePlus2, Inbox, LayoutList, LogOut, Megaphone, Menu, MessageCircleQuestion,
+  BarChart3, BookOpen, CheckSquare, Cpu, FilePlus2, Inbox, LayoutList, LogOut, Megaphone, Menu, MessageCircleQuestion,
   Moon, Sun, Ticket, Users, X,
 } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
@@ -26,6 +26,7 @@ const NAV = {
     { to: "/admin/updates", label: "Manager updates", icon: Megaphone },
     { to: "/admin/users", label: "Users", icon: Users },
     { to: "/admin/policies", label: "Policies", icon: BookOpen },
+    { to: "/admin/ai-usage", label: "AI usage", icon: Cpu },
   ],
 };
 

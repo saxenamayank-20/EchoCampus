@@ -4,8 +4,16 @@ from backend.app.core.config import settings
 from backend.app.core.deps import DB, CurrentUser, Sender
 from backend.app.core.rate_limit import hit
 from backend.app.core.security import create_access_token
-from backend.app.schemas.user import (LoginIn, MessageOut, RegisterIn, RegisterOut, TokenOut,
-                                      UserIdIn, UserOut, VerifyOtpIn)
+from backend.app.schemas.user import (
+    LoginIn,
+    MessageOut,
+    RegisterIn,
+    RegisterOut,
+    TokenOut,
+    UserIdIn,
+    UserOut,
+    VerifyOtpIn,
+)
 from backend.app.services.errors import NotFoundError
 from backend.app.services.otp_service import OtpService
 from backend.app.services.user_service import UserService

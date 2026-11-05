@@ -15,21 +15,24 @@ from backend.app.ai.triage import Triage, triage
 from backend.app.core.cache import get_cache
 from backend.app.core.config import settings
 from backend.app.core.constants import CATEGORIES, MANAGER_MEET_LINKS
-from backend.app.core.rate_limit import hit
 from backend.app.core.enums import Priority, Role, Status
+from backend.app.core.rate_limit import hit
 from backend.app.db.base import now
-from backend.app.models import (ClosureConfirmation, Complaint, ComplaintHistory, ComplaintSupporter,
-                                ManagerUpdate, User)
-from backend.app.models.confirmation import (AUTO_CONFIRMED, CONFIRMED, DISPUTED, PENDING,
-                                             WITHDRAWN)
+from backend.app.models import ClosureConfirmation, Complaint, ComplaintHistory, ComplaintSupporter, ManagerUpdate, User
+from backend.app.models.confirmation import AUTO_CONFIRMED, CONFIRMED, DISPUTED, PENDING, WITHDRAWN
 from backend.app.repositories.complaint_repository import ComplaintFilters, ComplaintRepository
 from backend.app.repositories.user_repository import UserRepository
-from backend.app.services.errors import (ConflictError, DomainError, InvalidInputError,
-                                         InvalidTransitionError, NotFoundError, PermissionDeniedError)
+from backend.app.services.errors import (
+    ConflictError,
+    DomainError,
+    InvalidInputError,
+    InvalidTransitionError,
+    NotFoundError,
+    PermissionDeniedError,
+)
 from backend.app.services.notification_service import NotificationService
 from backend.app.services.priority import KeywordPriorityDetector
 from backend.app.services.status_machine import MERGE, SYSTEM, StatusMachine
-
 
 STATS_KEY = "admin:stats"
 STATS_TTL = 60   # seconds
@@ -68,7 +71,7 @@ class ComplaintService:
         hit(f"submit:{student.id}", settings.rate_limit_complaints_per_hour, 3600)
 
         # the steps run as a langgraph graph: classify -> duplicates -> route -> escalate? -> notify
-        from backend.app.agents.intake_graph import run_intake   # here, the graph imports this file too
+        from backend.app.agents.intake_graph import run_intake  # here, the graph imports this file too
         result = run_intake(self, student, title, description, category, remarks)
         return self._get(result["ticket_id"])
 

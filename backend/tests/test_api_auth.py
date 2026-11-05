@@ -79,6 +79,7 @@ def test_wrong_password_is_401(client):
 
 def test_token_carries_role_and_expiry(client):
     import jwt
+
     from backend.app.core.security import JWT_SECRET
     token = client.post("/auth/login", json={"user_id": "GM101", "password": "Test@1234"}).json()["access_token"]
     payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])

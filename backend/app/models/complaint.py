@@ -5,7 +5,6 @@ from sqlalchemy import ForeignKey, Index, String, Text, false
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.app.core.config import settings
-
 from backend.app.core.enums import Priority, Status
 from backend.app.db.base import Base, enum_column, now
 from backend.app.models.user import User

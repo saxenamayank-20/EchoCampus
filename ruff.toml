@@ -1,0 +1,17 @@
+# lint settings, ci runs "ruff check backend scripts"
+line-length = 120
+target-version = "py312"
+extend-exclude = ["backend/alembic/versions"]
+
+[lint]
+# pyflakes, pycodestyle, import order, bugbear, newer python syntax
+select = ["F", "E", "W", "I", "B", "UP"]
+# Generic[T] reads clearer than the new class Page[T] syntax
+ignore = ["UP046"]
+
+[lint.per-file-ignores]
+# these set env vars before importing the app
+"backend/tests/conftest.py" = ["E402"]
+"scripts/*.py" = ["E402", "E501"]
+# long test data lines are fine
+"backend/tests/*.py" = ["E501"]

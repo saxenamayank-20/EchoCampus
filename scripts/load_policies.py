@@ -7,7 +7,6 @@ Each pdf goes through the indexing pipeline: read text per page -> chunk -> embe
 in policy_chunks. Run from the repo root (tables must exist, needs GEMINI_API_KEY).
 A policy with the same title is skipped, so running it twice is safe.
 """
-import os
 import sys
 from pathlib import Path
 

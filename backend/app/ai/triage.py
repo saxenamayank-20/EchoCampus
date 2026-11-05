@@ -69,7 +69,8 @@ def triage(llm: LLMClient, title: str, description: str, category: str) -> Triag
     cached = cache.get(key)
     if cached:
         data = json.loads(cached)
-        return Triage(**{**data, "priority": Priority(data["priority"]), "keyword_priority": Priority(data["keyword_priority"]),
+        return Triage(**{**data, "priority": Priority(data["priority"]),
+                         "keyword_priority": Priority(data["keyword_priority"]),
                          "ai_priority": Priority(data["ai_priority"]) if data["ai_priority"] else None})
 
     try:

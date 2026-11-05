@@ -1,12 +1,11 @@
 from fastapi import APIRouter, BackgroundTasks, status
 
 from backend.app.ai.reply_suggest import suggest_reply
-from backend.app.core.deps import DB, LLM, Manager, Sender
-from backend.app.core.rate_limit import hit
-from backend.app.core.enums import Role, Status
 from backend.app.core.config import settings
-from backend.app.schemas.complaint import (CloseRequestIn, ComplaintOut, ManagerUpdateIn, PriorityIn,
-                                           StatusUpdateIn)
+from backend.app.core.deps import DB, LLM, Manager, Sender
+from backend.app.core.enums import Role, Status
+from backend.app.core.rate_limit import hit
+from backend.app.schemas.complaint import CloseRequestIn, ComplaintOut, ManagerUpdateIn, PriorityIn, StatusUpdateIn
 from backend.app.schemas.user import MessageOut
 from backend.app.services.complaint_service import ComplaintService
 from backend.app.services.email_service import status_change_mail
@@ -41,7 +40,8 @@ def request_close(ticket_id: str, body: CloseRequestIn, db: DB, manager: Manager
                         f"EchoCampus: was {complaint.ticket_id} fixed?",
                         f"Your complaint {complaint.ticket_id} was marked resolved.\n"
                         f"Manager's note: {body.note}\n\nWas it really fixed? Log in to answer within "
-                        f"{settings.confirmation_window_days} days: {settings.frontend_origin}/tickets/{complaint.ticket_id}")
+                        f"{settings.confirmation_window_days} days: "
+                        f"{settings.frontend_origin}/tickets/{complaint.ticket_id}")
     return ComplaintOut.of(complaint)
 
 
