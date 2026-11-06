@@ -1,0 +1,45 @@
+# the whole app on one machine: postgres (with pgvector), the backend and the frontend
+# docker compose up --build   ->  frontend on port 3000, backend on port 8000
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: echo
+      POSTGRES_PASSWORD: echo
+      POSTGRES_DB: echocampus
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U echo -d echocampus"]
+      interval: 3s
+      retries: 20
+
+  backend:
+    build: .
+    # keys like GEMINI_API_KEY come from .env (optional, the app runs without them)
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      # the local container db, not neon
+      DATABASE_URL: postgresql://echo:echo@db:5432/echocampus
+      FRONTEND_ORIGIN: http://localhost:3000
+      REDIS_URL: ""
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE_URL: http://localhost:8000
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:

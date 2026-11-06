@@ -42,6 +42,7 @@ In most colleges a complaint goes into an email or a paper form, and nobody know
 - **AI:** Google Gemini through the `google-genai` SDK: `gemini-3.5-flash-lite` for text, `gemini-embedding-2` (768 dimensions) for embeddings
 - **Agents:** LangGraph 1.2 (StateGraph, `interrupt` for human-in-the-loop) with `langgraph-checkpoint-postgres`
 - **Frontend:** React 18, Vite 5, Tailwind CSS 3, React Router 6, TanStack Query 5, Recharts 3, lucide-react (plain JavaScript)
+- **Deployment:** Docker + docker compose, Render (backend), Vercel (frontend)
 - **Tests:** pytest (fake AI in tests, plus optional real-Postgres tests), ruff for linting, GitHub Actions runs both on every push
 
 ## How it works
@@ -107,6 +108,22 @@ uvicorn backend.app.main:app --reload --port 8000   # backend on port 8000, Swag
 cd frontend && npm run dev                          # frontend on port 5173 (second terminal)
 ```
 
+### Or with Docker
+
+Needs only Docker. This starts Postgres (with pgvector), the backend and the frontend together, with its own empty database (not Neon). Keys like `GEMINI_API_KEY` and the staff passwords are read from `.env` if it exists.
+
+```bash
+docker compose up --build    # frontend on port 3000, backend on port 8000
+docker compose down          # stop (add -v to also delete the database)
+```
+
+## Deployment
+
+- **Backend:** Render (free web service). Build: `pip install -r requirements.txt`. Start: `alembic upgrade head && uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT`. Health check on `/health`.
+- **Frontend:** Vercel, root folder `frontend`, with `VITE_API_BASE_URL` set to the backend address. `frontend/vercel.json` sends every path to `index.html` so refreshing a page works.
+- **Database:** Neon. **Cache:** Upstash Redis.
+- The backend's `FRONTEND_ORIGIN` must be the exact Vercel address, otherwise the browser blocks the calls (CORS).
+
 ## API routes
 
 The main ones (all 46 are in [docs/API.md](docs/API.md)):
@@ -137,7 +154,10 @@ EchoCampus/
 |-- frontend/         React + Vite app
 |-- data/policies/    policy PDFs the assistant answers from
 |-- scripts/          seed, demo data, load policies, export graphs, reset passwords
-`-- docs/             API list, graph diagrams and screenshots
+|-- docs/             API list, graph diagrams and screenshots
+|-- .github/          CI workflow (ruff, tests, frontend build)
+|-- Dockerfile        backend image (frontend/Dockerfile for the frontend)
+`-- docker-compose.yml
 ```
 
 ## Running tests
@@ -154,6 +174,7 @@ Tests use a temporary SQLite database and a fake AI, so they never touch real da
 - Keeping the AI safe: it may only raise a priority (the keyword rules are the floor), crisis help never depends on it, and the policy assistant has to cite a real source or say "not in the documents".
 - A live test showed that `gemini-embedding-2` turns a plain list of texts into one vector. Sending each text as its own `Content` fixed it, and a check now fails loudly if the count is wrong.
 - Moving from SQLite to Postgres with Alembic: real enum types, a sequence for student IDs (so two students can't get the same one), and making sure tests can never write into the real database.
+- The first Render build crashed on a missing `numpy`: it was only installed on my laptop through another package. A fresh virtual environment now gets tested before deploying.
 - Render's free disk is wiped on every restart, so files saved there disappeared. Storing them in a Postgres table fixed it, and the file is saved in the same commit as its attachment row.
 - LangGraph's Postgres setup builds its indexes with `CREATE INDEX CONCURRENTLY`, which waits for every open transaction, so the first close request hung. The checkpoint tables are now created at startup, before any request runs.
 
@@ -162,6 +183,7 @@ Tests use a temporary SQLite database and a fake AI, so they never touch real da
 - Uploaded files (proof and policy PDFs) are kept in Postgres, not in object storage. Fine for this size (5 MB per file, 5 per complaint); a bigger setup would move them to something like S3.
 - The Gemini free tier limits requests per minute, so the app throttles its own AI calls and falls back to the keyword rules when the AI is busy.
 - With a local SQLite database, paused closing graphs are kept in memory only. After a restart the same step runs directly with the same rules, so nothing gets stuck.
-- Next: deployment (Docker, Render and Vercel) and cloud storage for attachments.
+- Render's free plan sleeps after 15 minutes without visitors, so the first load after that takes about a minute, and the 15-minute SLA job and the Monday report don't run while it sleeps.
+- The Docker setup uses an in-memory cache instead of Redis, which is fine for one backend.
 
 ![Policy assistant answering from the handbook](docs/screenshots/policy-assistant.png)
