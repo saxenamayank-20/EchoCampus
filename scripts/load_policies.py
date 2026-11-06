@@ -16,7 +16,6 @@ sys.path.insert(0, str(ROOT))
 from backend.app.ai.llm_client import get_llm
 from backend.app.db.session import SessionLocal
 from backend.app.services.policy_service import PolicyService
-from backend.app.services.storage import get_storage
 from backend.app.services.user_service import UserService
 
 POLICY_DIR = ROOT / "data" / "policies"
@@ -39,7 +38,7 @@ def main() -> int:
         if not admin:
             print("[POLICIES] no AD100 admin yet, start the backend once (or run scripts/seed.py) first")
             return 1
-        service = PolicyService(db, get_llm(), get_storage())
+        service = PolicyService(db, get_llm())
         existing = {d.title for d in service.all_policies()}
         for path, title in files:
             if title in existing:

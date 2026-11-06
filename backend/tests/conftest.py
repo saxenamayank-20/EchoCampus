@@ -89,9 +89,6 @@ def mailbox() -> FakeSender:
 
 @pytest.fixture
 def client(session_factory, seeded_db, mailbox, tmp_path, monkeypatch) -> TestClient:
-    from backend.app.core.config import settings
-    monkeypatch.setattr(settings, "upload_dir", str(tmp_path / "uploads"))
-
     def test_db():
         with session_factory() as s:
             yield s

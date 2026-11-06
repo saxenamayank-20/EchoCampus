@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Form, UploadFile, status
+from fastapi import APIRouter, Form, UploadFile, status
 from pydantic import BaseModel, Field
 
 from backend.app.ai.rag import answer_question
@@ -11,10 +11,8 @@ from backend.app.core.rate_limit import hit
 from backend.app.models import PolicyDocument
 from backend.app.schemas.user import MessageOut
 from backend.app.services.policy_service import MAX_POLICY_MB, PolicyService
-from backend.app.services.storage import LocalStorage, get_storage
 
 router = APIRouter(tags=["policies"])
-Storage = Annotated[LocalStorage, Depends(get_storage)]
 
 
 class PolicyOut(BaseModel):
@@ -55,25 +53,25 @@ def _read(file: UploadFile) -> bytes:
 
 
 @router.get("/admin/policies", response_model=list[PolicyOut])
-def list_policies(db: DB, _: Admin, llm: LLM, storage: Storage):
-    return [PolicyOut.of(d) for d in PolicyService(db, llm, storage).all_policies()]
+def list_policies(db: DB, _: Admin, llm: LLM):
+    return [PolicyOut.of(d) for d in PolicyService(db, llm).all_policies()]
 
 
 @router.post("/admin/policies", response_model=PolicyOut, status_code=status.HTTP_201_CREATED)
 def upload_policy(title: Annotated[str, Form(max_length=200)], file: UploadFile, db: DB, admin: Admin,
-                  llm: LLM, storage: Storage):
-    return PolicyOut.of(PolicyService(db, llm, storage).upload(admin, title, file.filename, _read(file)))
+                  llm: LLM):
+    return PolicyOut.of(PolicyService(db, llm).upload(admin, title, file.filename, _read(file)))
 
 
 @router.put("/admin/policies/{doc_id}", response_model=PolicyOut)
-def replace_policy(doc_id: int, file: UploadFile, db: DB, admin: Admin, llm: LLM, storage: Storage):
+def replace_policy(doc_id: int, file: UploadFile, db: DB, admin: Admin, llm: LLM):
     """re-upload: old chunks are replaced by the new pdf's"""
-    return PolicyOut.of(PolicyService(db, llm, storage).replace(admin, doc_id, file.filename, _read(file)))
+    return PolicyOut.of(PolicyService(db, llm).replace(admin, doc_id, file.filename, _read(file)))
 
 
 @router.delete("/admin/policies/{doc_id}", response_model=MessageOut)
-def delete_policy(doc_id: int, db: DB, admin: Admin, llm: LLM, storage: Storage):
-    PolicyService(db, llm, storage).delete(admin, doc_id)
+def delete_policy(doc_id: int, db: DB, admin: Admin, llm: LLM):
+    PolicyService(db, llm).delete(admin, doc_id)
     return MessageOut(message="Policy deleted.")
 
 

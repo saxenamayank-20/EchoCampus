@@ -37,7 +37,7 @@ In most colleges a complaint goes into an email or a paper form, and nobody know
 ## Tech stack
 
 - **Backend:** Python 3.12, FastAPI, SQLAlchemy 2, Alembic, pydantic-settings, PyJWT, bcrypt, APScheduler
-- **Database:** PostgreSQL on Neon with pgvector (a local SQLite file works for development)
+- **Database:** PostgreSQL on Neon with pgvector, also holds the uploaded files (a local SQLite file works for development)
 - **Cache / rate limits:** Redis on Upstash (falls back to memory when not set)
 - **AI:** Google Gemini through the `google-genai` SDK: `gemini-3.5-flash-lite` for text, `gemini-embedding-2` (768 dimensions) for embeddings
 - **Agents:** LangGraph 1.2 (StateGraph, `interrupt` for human-in-the-loop) with `langgraph-checkpoint-postgres`
@@ -154,11 +154,12 @@ Tests use a temporary SQLite database and a fake AI, so they never touch real da
 - Keeping the AI safe: it may only raise a priority (the keyword rules are the floor), crisis help never depends on it, and the policy assistant has to cite a real source or say "not in the documents".
 - A live test showed that `gemini-embedding-2` turns a plain list of texts into one vector. Sending each text as its own `Content` fixed it, and a check now fails loudly if the count is wrong.
 - Moving from SQLite to Postgres with Alembic: real enum types, a sequence for student IDs (so two students can't get the same one), and making sure tests can never write into the real database.
+- Render's free disk is wiped on every restart, so files saved there disappeared. Storing them in a Postgres table fixed it, and the file is saved in the same commit as its attachment row.
 - LangGraph's Postgres setup builds its indexes with `CREATE INDEX CONCURRENTLY`, which waits for every open transaction, so the first close request hung. The checkpoint tables are now created at startup, before any request runs.
 
 ## Known limitations and what's next
 
-- Not deployed yet. Uploaded files are stored on the local disk; cloud storage comes with deployment.
+- Uploaded files (proof and policy PDFs) are kept in Postgres, not in object storage. Fine for this size (5 MB per file, 5 per complaint); a bigger setup would move them to something like S3.
 - The Gemini free tier limits requests per minute, so the app throttles its own AI calls and falls back to the keyword rules when the AI is busy.
 - With a local SQLite database, paused closing graphs are kept in memory only. After a restart the same step runs directly with the same rules, so nothing gets stuck.
 - Next: deployment (Docker, Render and Vercel) and cloud storage for attachments.

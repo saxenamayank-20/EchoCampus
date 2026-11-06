@@ -1,8 +1,10 @@
 import io
 import zipfile
-from pathlib import Path
+
+from sqlalchemy import select
 
 from backend.app.core.config import settings
+from backend.app.models import StoredFile
 from backend.tests.conftest import login, make_student
 
 PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 100
@@ -107,10 +109,9 @@ def test_no_token_401(client, mailbox):
     assert client.get(f"/attachments/{file_id}").status_code == 401
 
 
-def test_saved_under_random_name(client, mailbox):
+def test_saved_under_random_name(client, mailbox, seeded_db):
     t, h = setup_ticket(client, mailbox)
     upload(client, t, h, "../../etc/passwd.png", PNG)
-    saved = list(Path(settings.upload_dir).iterdir())
-    assert len(saved) == 1
-    assert saved[0].name != "passwd.png" and len(saved[0].stem) == 32 and saved[0].suffix == ".png"
+    stored = seeded_db.scalar(select(StoredFile.name))
+    assert stored != "passwd.png" and len(stored) == 36 and stored.endswith(".png")
     assert client.get(f"/complaints/{t}/attachments", headers=h).json()[0]["original_name"] == "passwd.png"

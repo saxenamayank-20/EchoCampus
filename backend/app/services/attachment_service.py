@@ -15,13 +15,13 @@ from backend.app.services.errors import (
     UnsupportedFileError,
 )
 from backend.app.services.file_types import detect_file_type
-from backend.app.services.storage import LocalStorage
+from backend.app.services.storage import DatabaseStorage
 
 
 class AttachmentService:
-    def __init__(self, db: Session, storage: LocalStorage):
+    def __init__(self, db: Session):
         self.db = db
-        self.storage = storage
+        self.storage = DatabaseStorage(db)
         self.complaints = ComplaintService(db)
 
     def upload(self, ticket_id: str, uploader: User, filename: str, data: bytes) -> Attachment:
@@ -59,16 +59,16 @@ class AttachmentService:
         return list(self.db.scalars(select(Attachment).where(Attachment.complaint_id == complaint.id)
                                     .order_by(Attachment.id)))
 
-    def open_for(self, viewer: User, attachment_id: int) -> tuple[Attachment, Path]:
+    def open_for(self, viewer: User, attachment_id: int) -> tuple[Attachment, bytes]:
         attachment = self.db.get(Attachment, attachment_id)
         if not attachment:
             raise NotFoundError("File not found.")
         # same rule as the complaint: owner student, assigned manager or admin
         self.complaints.get_for(viewer, attachment.complaint.ticket_id)
-        path = self.storage.path(attachment.stored_name)
-        if not path.exists():
+        data = self.storage.read(attachment.stored_name)
+        if data is None:
             raise NotFoundError("File is missing from storage.")
-        return attachment, path
+        return attachment, data
 
 
 def _clean_name(filename: str | None) -> str:

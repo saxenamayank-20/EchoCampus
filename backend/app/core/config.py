@@ -35,7 +35,6 @@ class Settings(BaseSettings):
     otp_max_attempts: int = 5
 
     # proof attachments
-    upload_dir: str = "uploads"
     max_upload_mb: int = 5
     max_files_per_complaint: int = 5
 

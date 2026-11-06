@@ -1,28 +1,26 @@
 import uuid
-from pathlib import Path
 
-from backend.app.core.config import settings
+from sqlalchemy import delete, select
+from sqlalchemy.orm import Session
+
+from backend.app.models import StoredFile
 
 
-class LocalStorage:
-    """saves files in a local folder. at deployment a cloud storage class with the same methods replaces it"""
+class DatabaseStorage:
+    """keeps uploaded files in postgres (stored_files), so they survive a restart on render.
+    uses the request's own session: the file and its attachment row are saved in one commit"""
 
-    def __init__(self, base_dir: str):
-        self.base = Path(base_dir)
+    def __init__(self, db: Session):
+        self.db = db
 
     def save(self, data: bytes, extension: str) -> str:
-        # random name, the user's file name never touches the disk
+        # random name, the user's file name is never used for storage
         name = f"{uuid.uuid4().hex}{extension}"
-        self.base.mkdir(parents=True, exist_ok=True)
-        (self.base / name).write_bytes(data)
+        self.db.add(StoredFile(name=name, data=data, size_bytes=len(data)))
         return name
 
-    def path(self, stored_name: str) -> Path:
-        return self.base / stored_name
+    def read(self, stored_name: str) -> bytes | None:
+        return self.db.scalar(select(StoredFile.data).where(StoredFile.name == stored_name))
 
     def delete(self, stored_name: str) -> None:
-        self.path(stored_name).unlink(missing_ok=True)
-
-
-def get_storage() -> LocalStorage:
-    return LocalStorage(settings.upload_dir)
+        self.db.execute(delete(StoredFile).where(StoredFile.name == stored_name))

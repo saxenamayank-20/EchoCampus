@@ -20,5 +20,4 @@ numpy>=2.0
 pypdf>=4.0
 langgraph>=1.2
 langgraph-checkpoint-postgres>=3.2
-cloudinary>=1.40
 ruff>=0.15

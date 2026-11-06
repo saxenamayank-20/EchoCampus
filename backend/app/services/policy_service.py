@@ -16,7 +16,7 @@ from backend.app.services.errors import (
     UnsupportedFileError,
 )
 from backend.app.services.file_types import detect_file_type
-from backend.app.services.storage import LocalStorage
+from backend.app.services.storage import DatabaseStorage
 
 MAX_POLICY_MB = 10
 
@@ -24,10 +24,10 @@ MAX_POLICY_MB = 10
 class PolicyService:
     """admin's policy pdfs: read the text, cut into chunks, embed, store"""
 
-    def __init__(self, db: Session, llm: LLMClient, storage: LocalStorage):
+    def __init__(self, db: Session, llm: LLMClient):
         self.db = db
         self.llm = llm
-        self.storage = storage
+        self.storage = DatabaseStorage(db)
 
     def upload(self, admin: User, title: str, filename: str, data: bytes) -> PolicyDocument:
         self._check_admin(admin)
@@ -51,8 +51,8 @@ class PolicyService:
         doc.filename = (filename or doc.filename)[:255]
         doc.pages = len(pages)
         self._index(doc, pages)
+        self.storage.delete(old_file)      # same commit as the new file
         self.db.commit()
-        self.storage.delete(old_file)
         return doc
 
     def delete(self, admin: User, doc_id: int) -> None:

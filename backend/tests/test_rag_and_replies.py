@@ -1,8 +1,10 @@
 import pytest
+from sqlalchemy import select
 
 from backend.app.ai.chunking import chunk_pages
 from backend.app.ai.pdf import extract_pages
 from backend.app.core.config import settings
+from backend.app.models import StoredFile
 from backend.app.utils.pdfgen import make_pdf
 from backend.tests.conftest import login, make_student
 
@@ -39,7 +41,12 @@ def admin(ai_client):
     return login(ai_client, "AD100")
 
 
-def test_upload_list_replace_delete(ai_client, admin):
+def stored_files(db):
+    db.expire_all()
+    return list(db.scalars(select(StoredFile.data)))
+
+
+def test_upload_list_replace_delete(ai_client, admin, seeded_db):
     r = upload(ai_client, admin, "Hostel Policy", HOSTEL)
     assert r.status_code == 201 and r.json()["pages"] == 2 and r.json()["chunks"] == 2
     doc_id = r.json()["id"]
@@ -47,9 +54,11 @@ def test_upload_list_replace_delete(ai_client, admin):
 
     r = ai_client.put(f"/admin/policies/{doc_id}", files={"file": ("v2.pdf", FEES)}, headers=admin)
     assert r.status_code == 200 and r.json()["pages"] == 1 and r.json()["chunks"] == 1    # old chunks gone
+    assert stored_files(seeded_db) == [FEES]                                                # old pdf gone too
 
     assert ai_client.delete(f"/admin/policies/{doc_id}", headers=admin).status_code == 200
     assert ai_client.get("/admin/policies", headers=admin).json() == []
+    assert stored_files(seeded_db) == []
 
 
 def test_only_pdfs_and_only_admin(ai_client, admin, mailbox):
