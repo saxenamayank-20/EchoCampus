@@ -29,7 +29,7 @@ In most colleges a complaint goes into an email or a paper form, and nobody know
 - An AI usage page: calls, failures, tokens and speed (average and p95) per AI feature
 
 **Behind the scenes**
-- JWT login, role checks on every route, rate limits (5 complaints per hour, 10 login tries per 15 minutes)
+- JWT login, role checks on every route, rate limits (5 complaints per hour, 10 login tries per 15 minutes for each user ID)
 - SLA deadlines by priority, and a job every 15 minutes that escalates overdue complaints
 - In-app notifications (bell) and email for status changes
 - Submitting and closing run as LangGraph graphs. Closing pauses for the student and then the admin, and the paused state is saved in Postgres, so it survives a restart

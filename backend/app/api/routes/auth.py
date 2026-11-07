@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request, status
+from fastapi import APIRouter, status
 
 from backend.app.core.config import settings
 from backend.app.core.deps import DB, CurrentUser, Sender
@@ -44,10 +44,10 @@ def resend_otp(body: UserIdIn, db: DB, sender: Sender):
 
 
 @router.post("/login", response_model=TokenOut)
-def login(body: LoginIn, db: DB, request: Request):
-    # slows down password guessing: max 10 tries per 15 minutes from one ip address
-    ip = request.client.host if request.client else "unknown"
-    hit(f"login:{ip}", settings.rate_limit_logins_per_15_min, 15 * 60)
+def login(body: LoginIn, db: DB):
+    # slows down password guessing: max 10 tries per 15 minutes for one user id.
+    # not per ip, on render every request comes from the proxy's ip so all users would share one limit
+    hit(f"login:{body.user_id.strip().upper()}", settings.rate_limit_logins_per_15_min, 15 * 60)
     user = UserService(db).authenticate(body.user_id, body.password)
     token = create_access_token(user.user_id, user.role.value)
     return TokenOut(access_token=token, expires_in=settings.jwt_expire_minutes * 60, user=UserOut.of(user))

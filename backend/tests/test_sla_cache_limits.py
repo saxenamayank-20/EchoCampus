@@ -46,12 +46,14 @@ def test_complaint_rate_limit_429(client, mailbox, monkeypatch):
     assert r.status_code == 429 and r.json()["error"]["code"] == "rate_limited"
 
 
-def test_login_rate_limit_per_ip_429(client, monkeypatch):
+def test_login_rate_limit_per_user_429(client, monkeypatch):
     monkeypatch.setattr(settings, "rate_limit_logins_per_15_min", 3)
     for _ in range(3):
         client.post("/auth/login", json={"user_id": "AD100", "password": "Wrong@123"})
-    r = client.post("/auth/login", json={"user_id": "AD100", "password": "Test@1234"})
+    r = client.post("/auth/login", json={"user_id": "ad100", "password": "Test@1234"})
     assert r.status_code == 429      # even the right password waits, that's what stops guessing
+    # everyone comes from the same ip in tests (like behind render's proxy), other users can still log in
+    assert client.post("/auth/login", json={"user_id": "GM101", "password": "Test@1234"}).status_code == 200
 
 
 # ── sla ──────────────────────────────────────────────────────────────────────
