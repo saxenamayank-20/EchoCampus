@@ -67,7 +67,7 @@ flowchart LR
 - The **policy assistant** is RAG: the handbook in `data/policies/` is split into chunks, embedded and stored. A question is embedded, the closest chunks are found, and Gemini answers only from them with citations. If nothing matches, it says so.
 - **Submitting** runs as a LangGraph graph: classify → check duplicates → route to the manager → escalate if Critical → notify. If an AI step fails, the graph takes the keyword path.
 - **Closing** is a second graph that pauses twice with `interrupt()`, once waiting for the student and once for the admin. The paused state is saved in Postgres, and the student's answer or the admin's click resumes it. Both diagrams are in [docs/graphs.md](docs/graphs.md).
-- More detail per step is in my learning notes (kept outside the repo) and in [docs/API.md](docs/API.md).
+- More detail per step is in my learning notes (kept outside the repo). The full list of backend routes is in [docs/API.md](docs/API.md).
 
 ## Run it locally
 
@@ -104,7 +104,7 @@ python scripts/seed.py                 # admin AD100 + managers GM101-GM104
 python scripts/load_policies.py        # indexes data/policies/*.pdf for the assistant (needs GEMINI_API_KEY)
 python scripts/seed_demo_data.py       # optional: 10 demo students + 60 complaints
 
-uvicorn backend.app.main:app --reload --port 8000   # backend on port 8000, Swagger at /docs
+uvicorn backend.app.main:app --reload --port 8000   # backend on port 8000
 cd frontend && npm run dev                          # frontend on port 5173 (second terminal)
 ```
 
@@ -119,29 +119,10 @@ docker compose down          # stop (add -v to also delete the database)
 
 ## Deployment
 
-- **Backend:** Render (free web service). Build: `pip install -r requirements.txt`. Start: `alembic upgrade head && uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT`. Health check on `/health`.
+- **Backend:** Render (free web service). Build: `pip install -r requirements.txt`. Start: `alembic upgrade head && uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT`. Render checks a health route to know the app is up.
 - **Frontend:** Vercel, root folder `frontend`, with `VITE_API_BASE_URL` set to the backend address. `frontend/vercel.json` sends every path to `index.html` so refreshing a page works.
 - **Database:** Neon. **Cache:** Upstash Redis.
 - The backend's `FRONTEND_ORIGIN` must be the exact Vercel address, otherwise the browser blocks the calls (CORS).
-
-## API routes
-
-The main ones (all 46 are in [docs/API.md](docs/API.md)):
-
-| Method | Route | What it does |
-|---|---|---|
-| POST | `/auth/register` | register a student, emails a 6-digit code |
-| POST | `/auth/login` | log in, returns a JWT |
-| POST | `/complaints/preview` | AI check before submit: category, priority, crisis help, similar complaints |
-| POST | `/complaints` | submit a complaint |
-| GET | `/complaints` | list complaints (filtered by role), with filters and paging |
-| POST | `/complaints/{ticket_id}/confirm` | student confirms or disputes the fix |
-| POST | `/manager/complaints/{ticket_id}/status` | manager changes the status (status machine checked) |
-| POST | `/manager/complaints/{ticket_id}/reply-suggestion` | AI reply draft for the manager |
-| POST | `/admin/complaints/{ticket_id}/close` | admin closes after the student confirmed |
-| POST | `/assistant/ask` | policy question, answered from the handbook with page citations |
-| GET | `/admin/stats` | dashboard numbers and charts |
-| POST | `/admin/insights/run` | write the weekly AI report now |
 
 ## Project structure
 
