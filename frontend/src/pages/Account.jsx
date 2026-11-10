@@ -5,6 +5,7 @@ import { api } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { ErrorBox, PageHeader } from "../components/Feedback";
 import { useToast } from "../components/Toast";
+import PasswordInput from "../components/PasswordInput";
 import { formatDate, roleLabel } from "../lib/format";
 
 const EMPTY = { current: "", next: "", confirm: "" };
@@ -75,18 +76,18 @@ export default function Account() {
         <h2 className="flex items-center gap-2 font-semibold"><KeyRound size={18} /> Change password</h2>
         <div>
           <label className="label" htmlFor="pw-current">Current password</label>
-          <input id="pw-current" type="password" className="input" autoComplete="current-password"
+          <PasswordInput id="pw-current" autoComplete="current-password"
             value={form.current} onChange={set("current")} required />
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label className="label" htmlFor="pw-new">New password</label>
-            <input id="pw-new" type="password" className="input" autoComplete="new-password"
+            <PasswordInput id="pw-new" autoComplete="new-password"
               value={form.next} onChange={set("next")} required />
           </div>
           <div>
             <label className="label" htmlFor="pw-confirm">Confirm new password</label>
-            <input id="pw-confirm" type="password" className="input" autoComplete="new-password"
+            <PasswordInput id="pw-confirm" autoComplete="new-password"
               value={form.confirm} onChange={set("confirm")} required />
           </div>
         </div>

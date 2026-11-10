@@ -63,5 +63,5 @@ export function useAuth() {
 }
 
 export function homeFor(role) {
-  return { student: "/student/tickets", grievance_manager: "/manager/queue", admin: "/admin" }[role] ?? "/login";
+  return { student: "/student/tickets", grievance_manager: "/manager", admin: "/admin" }[role] ?? "/login";
 }

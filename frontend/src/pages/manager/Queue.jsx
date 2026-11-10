@@ -1,60 +1,61 @@
-import { useSearchParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { Clock, Flame, Inbox, TriangleAlert } from "lucide-react";
-import { api } from "../../api/client";
-import { useAuth } from "../../auth/AuthContext";
+import { Link, useSearchParams } from "react-router-dom";
+import { X } from "lucide-react";
 import ComplaintTable from "../../components/ComplaintTable";
-import { PageHeader, StatCard } from "../../components/Feedback";
+import { PageHeader } from "../../components/Feedback";
 
 const ACTIVE = ["Assigned", "In Progress"];
 const DONE = ["Resolved", "Closed"];
 
-function useCount(params) {
-  return useQuery({
-    queryKey: ["complaints", "count", params],
-    queryFn: () => api("/complaints", { params: { ...params, page_size: 1 } }).then((r) => r.total),
-  });
-}
-
+// the overview boxes open this page with a filter in the url, e.g. ?priority=Critical
 export default function Queue() {
-  const { user } = useAuth();
-  const [params, setParams] = useSearchParams();
+  const [params] = useSearchParams();
   const resolved = params.get("tab") === "resolved";
-  const statuses = resolved ? DONE : ACTIVE;
+  const priority = params.get("priority") || "";
+  const category = params.get("category") || "";
+  const status = params.get("status");                 // one status, e.g. "In Progress" or "Closed"
+  const escalated = params.get("escalated") === "true";
+  const waiting = params.get("close_requested") === "true";
 
-  const open = useCount({ status: ACTIVE });
-  const critical = useCount({ status: ACTIVE, priority: "Critical" });
-  const high = useCount({ status: ACTIVE, priority: "High" });
-  const inProgress = useCount({ status: ["In Progress"] });
+  const allowed = resolved ? DONE : ACTIVE;
+  const fixed = {
+    status: allowed.includes(status) ? [status] : allowed,
+    ...(escalated && { escalated: true }),
+    ...(waiting && { close_requested: true }),
+  };
 
-  const tab = (active, label, value) => (
-    <button
-      onClick={() => setParams(value ? { tab: value } : {})}
-      className={`rounded-lg px-3 py-1.5 text-sm ${active ? "bg-white font-medium shadow-sm dark:bg-slate-800" : "text-slate-500"}`}
-    >
-      {label}
-    </button>
-  );
+  // what the box picked, shown above the table so it's clear the list is filtered
+  const picked = [
+    allowed.includes(status) && status,
+    priority, category,
+    escalated && "Escalated (past SLA)",
+    waiting && "Waiting for the student",
+  ].filter(Boolean);
+  const base = resolved ? "/manager/queue?tab=resolved" : "/manager/queue";
 
   return (
     <div>
-      <PageHeader title="Complaints" subtitle={`Your categories: ${user.categories?.join(", ") || "—"}`} />
-      <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label="Open" value={open.data} icon={Inbox} tone="brand" />
-        <StatCard label="Critical" value={critical.data} icon={Flame} tone="red" />
-        <StatCard label="High" value={high.data} icon={TriangleAlert} tone="amber" />
-        <StatCard label="In progress" value={inProgress.data} icon={Clock} />
-      </div>
+      <PageHeader
+        title={resolved ? "Resolved complaints" : "Active complaints"}
+        subtitle={resolved ? "Resolved (waiting for the student or admin) and closed" : "Assigned and In Progress, in your categories"}
+      />
 
-      <div className="mb-4 inline-flex rounded-xl bg-slate-100 p-1 dark:bg-slate-900">
-        {tab(!resolved, "Active", null)}
-        {tab(resolved, "Resolved", "resolved")}
-      </div>
+      {picked.length > 0 && (
+        <p className="mb-3 flex flex-wrap items-center gap-2 text-sm">
+          <span className="text-slate-500">Showing:</span>
+          {picked.map((p) => (
+            <span key={p} className="rounded-full bg-brand-100 px-2.5 py-0.5 font-medium text-brand-800 dark:bg-brand-400/10 dark:text-brand-400">{p}</span>
+          ))}
+          <Link to={base} className="inline-flex items-center gap-1 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200">
+            <X size={14} /> Clear filter
+          </Link>
+        </p>
+      )}
 
-      {/* key resets paging/filters when switching tabs */}
+      {/* key = the url, so a new box (or clearing) starts the table fresh with its filters */}
       <ComplaintTable
-        key={resolved ? "done" : "active"}
-        fixed={{ status: statuses }}
+        key={params.toString()}
+        fixed={fixed}
+        initial={{ priority, category }}
         statusOptions={[]}
         showStudent
         emptyText={resolved ? "Nothing resolved yet." : "No open complaints right now."}

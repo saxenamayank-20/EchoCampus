@@ -84,7 +84,6 @@ export default function Assistant() {
           placeholder="Ask about hostel rules, exams, fees…" aria-label="Your question" />
         <button className="btn-primary" disabled={busy || question.trim().length < 3}><Send size={16} /></button>
       </form>
-      <p className="mt-2 text-xs text-slate-500">The assistant never guesses: if the answer isn't in the documents, it says so.</p>
     </div>
   );
 }

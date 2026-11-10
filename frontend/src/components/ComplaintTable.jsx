@@ -14,10 +14,11 @@ const PAGE_SIZE = 10;
  * table of complaints with filters + paging. the backend already limits rows to what
  * this user may see, so the same table works for students, managers and admin.
  * fixed = filters the page always sends (like a manager's queue statuses)
+ * initial = filters already picked when the table opens (from a box on the overview), still changeable
  */
-export default function ComplaintTable({ fixed = {}, statusOptions = [], showStudent = false, showManager = false, emptyText, queryKey = "complaints" }) {
+export default function ComplaintTable({ fixed = {}, initial = {}, statusOptions = [], showStudent = false, showManager = false, emptyText, queryKey = "complaints" }) {
   const [page, setPage] = useState(1);
-  const [filters, setFilters] = useState({ status: "", category: "", priority: "", q: "", date_from: "", date_to: "" });
+  const [filters, setFilters] = useState({ status: "", category: "", priority: "", q: "", date_from: "", date_to: "", ...initial });
 
   const categories = useQuery({ queryKey: ["categories"], queryFn: () => api("/meta/categories"), staleTime: Infinity });
 

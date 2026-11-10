@@ -7,6 +7,7 @@ import Layout from "./components/Layout";
 import { AllComplaints, CloseRequests, ManagerUpdates, UsersPage } from "./pages/admin/AdminPages";
 import { LoginPage, NotFoundPage, RegisterPage, VerifyOtpPage } from "./pages/AuthPages";
 import Queue from "./pages/manager/Queue";
+import ManagerOverview from "./pages/manager/Overview";
 import MyTickets from "./pages/student/MyTickets";
 import Assistant from "./pages/student/Assistant";
 import NewComplaint from "./pages/student/NewComplaint";
@@ -44,6 +45,7 @@ export default function App() {
           </Route>
 
           <Route element={<RequireRole roles={["grievance_manager"]} />}>
+            <Route path="/manager" element={<ManagerOverview />} />
             <Route path="/manager/queue" element={<Queue />} />
           </Route>
 

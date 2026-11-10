@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import {
-  BarChart3, BookOpen, CheckSquare, Cpu, FilePlus2, Inbox, LayoutList, LogOut, Megaphone, Menu, MessageCircleQuestion,
+  BarChart3, BookOpen, CheckSquare, ChevronDown, Cpu, FilePlus2, Inbox, LayoutList, LogOut, Megaphone, Menu, MessageCircleQuestion,
   Moon, Sun, Ticket, UserRound, Users, X,
 } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
@@ -15,9 +15,15 @@ const NAV = {
     { to: "/student/tickets", label: "My tickets", icon: Ticket },
     { to: "/student/assistant", label: "Ask a question", icon: MessageCircleQuestion },
   ],
-  // active / resolved are tabs on the page itself, so one link is enough here
+  // complaints opens the overview (small boxes) and drops down active / resolved under it
   grievance_manager: [
-    { to: "/manager/queue", label: "Complaints", icon: Inbox },
+    {
+      to: "/manager", label: "Complaints", icon: Inbox, children: [
+        // match: still highlighted when a box added a filter like ?priority=Critical
+        { to: "/manager/queue", label: "Active", match: (l) => l.pathname === "/manager/queue" && !l.search.includes("tab=resolved") },
+        { to: "/manager/queue?tab=resolved", label: "Resolved", match: (l) => l.pathname === "/manager/queue" && l.search.includes("tab=resolved") },
+      ],
+    },
   ],
   admin: [
     { to: "/admin", label: "Overview", icon: BarChart3, end: true },
@@ -40,6 +46,59 @@ function isActive(location, to, end) {
   return location.pathname.startsWith(path);
 }
 
+function NavLink({ to, label, icon: Icon, end, match, location, onNavigate }) {
+  return (
+    <Link
+      to={to}
+      onClick={onNavigate}
+      className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition ${
+        (match ? match(location) : isActive(location, to, end))
+          ? "bg-brand-100 font-medium text-brand-800 dark:bg-brand-400/10 dark:text-brand-400"
+          : "text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+      }`}
+    >
+      {Icon && <Icon size={18} />}
+      {label}
+    </Link>
+  );
+}
+
+// a link with a drop down: clicking it opens its page and shows the sub links
+function NavGroup({ to, label, icon: Icon, items, location, onNavigate }) {
+  const insideChild = items.some((c) => location.pathname === c.to.split("?")[0]);
+  const [open, setOpen] = useState(insideChild);
+  const here = location.pathname === to;
+
+  // opening a list another way (a box on the overview, back button) also opens the drop down
+  useEffect(() => {
+    if (insideChild) setOpen(true);
+  }, [insideChild]);
+
+  return (
+    <div>
+      <Link
+        to={to}
+        onClick={() => setOpen((o) => (here ? !o : true))}
+        aria-expanded={open}
+        className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition ${
+          here
+            ? "bg-brand-100 font-medium text-brand-800 dark:bg-brand-400/10 dark:text-brand-400"
+            : "text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+        }`}
+      >
+        <Icon size={18} />
+        <span className="flex-1">{label}</span>
+        <ChevronDown size={16} className={`transition-transform ${open ? "rotate-180" : ""}`} />
+      </Link>
+      {open && (
+        <div className="ml-5 mt-1 space-y-1 border-l border-slate-200 pl-3 dark:border-slate-700">
+          {items.map((c) => <NavLink key={c.to} {...c} location={location} onNavigate={onNavigate} />)}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Sidebar({ onNavigate }) {
   const { user, logout } = useAuth();
   const [theme, toggleTheme] = useTheme();
@@ -54,21 +113,13 @@ function Sidebar({ onNavigate }) {
       </div>
 
       <nav className="flex-1 space-y-1 px-3">
-        {[...NAV[user.role], ACCOUNT].map(({ to, label, icon: Icon, end }) => (
-          <Link
-            key={to}
-            to={to}
-            onClick={onNavigate}
-            className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition ${
-              isActive(location, to, end)
-                ? "bg-brand-100 font-medium text-brand-800 dark:bg-brand-400/10 dark:text-brand-400"
-                : "text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
-            }`}
-          >
-            <Icon size={18} />
-            {label}
-          </Link>
-        ))}
+        {[...NAV[user.role], ACCOUNT].map(({ to, label, icon: Icon, end, children }) =>
+          children ? (
+            <NavGroup key={to} to={to} label={label} icon={Icon} items={children} location={location} onNavigate={onNavigate} />
+          ) : (
+            <NavLink key={to} to={to} label={label} icon={Icon} end={end} location={location} onNavigate={onNavigate} />
+          ),
+        )}
       </nav>
 
       <div className="border-t border-slate-200 p-4 dark:border-slate-800">

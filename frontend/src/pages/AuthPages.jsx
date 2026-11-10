@@ -4,6 +4,7 @@ import { api } from "../api/client";
 import { homeFor, useAuth } from "../auth/AuthContext";
 import { ErrorBox } from "../components/Feedback";
 import { useToast } from "../components/Toast";
+import PasswordInput from "../components/PasswordInput";
 
 const DEPARTMENTS = ["Computer Science", "Information Technology", "Electronics", "Mechanical", "Civil",
   "Electrical", "MBA", "BBA", "Commerce", "Arts", "Science", "Other"];
@@ -66,7 +67,7 @@ export function LoginPage() {
         </div>
         <div>
           <label className="label" htmlFor="pw">Password</label>
-          <input id="pw" type="password" className="input" autoComplete="current-password"
+          <PasswordInput id="pw" autoComplete="current-password"
             value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
         </div>
         <ErrorBox error={error} />
@@ -128,11 +129,11 @@ export function RegisterPage() {
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label className="label" htmlFor="pw1">Password</label>
-            <input id="pw1" type="password" className="input" autoComplete="new-password" value={form.password} onChange={set("password")} required />
+            <PasswordInput id="pw1" autoComplete="new-password" value={form.password} onChange={set("password")} required />
           </div>
           <div>
             <label className="label" htmlFor="pw2">Confirm</label>
-            <input id="pw2" type="password" className="input" autoComplete="new-password" value={form.confirm} onChange={set("confirm")} required />
+            <PasswordInput id="pw2" autoComplete="new-password" value={form.confirm} onChange={set("confirm")} required />
           </div>
         </div>
         <p className="text-xs text-slate-500">At least 8 characters with upper and lower case, a number and a symbol.</p>
