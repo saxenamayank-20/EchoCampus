@@ -43,6 +43,7 @@ In most colleges a complaint goes into an email or a paper form, and nobody know
 - **AI:** Google Gemini through the `google-genai` SDK: `gemini-3.5-flash-lite` for text, `gemini-embedding-2` (768 dimensions) for embeddings
 - **Agents:** LangGraph 1.2 (StateGraph, `interrupt` for human-in-the-loop) with `langgraph-checkpoint-postgres`
 - **Frontend:** React 18, Vite 5, Tailwind CSS 3, React Router 6, TanStack Query 5, Recharts 3, lucide-react (plain JavaScript)
+- **Packages:** uv (`pyproject.toml` + `uv.lock`)
 - **Deployment:** Docker + docker compose, Render (backend), Vercel (frontend)
 - **Tests:** pytest (fake AI in tests, plus optional real-Postgres tests), ruff for linting, GitHub Actions runs both on every push
 
@@ -72,14 +73,13 @@ flowchart LR
 
 ## Run it locally
 
-**You need:** Python 3.12, Node.js 18+, git. For the full setup: a free Neon database, a free Gemini API key (Google AI Studio), optionally a free Upstash Redis database and a Gmail app password for real emails.
+**You need:** Python 3.12, [uv](https://docs.astral.sh/uv/), Node.js 18+, git. For the full setup: a free Neon database, a free Gemini API key (Google AI Studio), optionally a free Upstash Redis database and a Gmail app password for real emails.
 
 ```bash
 git clone https://github.com/saxenamayank-20/EchoCampus.git
 cd EchoCampus
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+uv sync                      # makes .venv and installs the exact versions from uv.lock
+source .venv/bin/activate    # or put "uv run" in front of each command below
 cd frontend && npm install && cd ..
 ```
 
@@ -120,7 +120,7 @@ docker compose down          # stop (add -v to also delete the database)
 
 ## Deployment
 
-- **Backend:** Render (free web service). Build: `pip install -r requirements.txt`. Start: `alembic upgrade head && uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT`. Render checks a health route to know the app is up.
+- **Backend:** Render (free web service). Build: `pip install uv && UV_PYTHON_DOWNLOADS=never uv sync --frozen --no-dev`. Start: `.venv/bin/alembic upgrade head && .venv/bin/uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT`. Render checks a health route to know the app is up.
 - **Frontend:** Vercel, root folder `frontend`, with `VITE_API_BASE_URL` set to the backend address. `frontend/vercel.json` sends every path to `index.html` so refreshing a page works.
 - **Database:** Neon. **Cache:** Upstash Redis.
 - The backend's `FRONTEND_ORIGIN` must be the exact Vercel address, otherwise the browser blocks the calls (CORS).
@@ -139,14 +139,15 @@ EchoCampus/
 |-- docs/             API list, graph diagrams and screenshots
 |-- .github/          CI workflow (ruff, tests, frontend build)
 |-- Dockerfile        backend image (frontend/Dockerfile for the frontend)
-`-- docker-compose.yml
+|-- docker-compose.yml
+`-- pyproject.toml    python packages (uv.lock has the exact versions)
 ```
 
 ## Running tests
 
 ```bash
-pytest
-ruff check backend scripts    # lint, same as CI
+uv run pytest
+uv run ruff check backend scripts    # lint, same as CI
 ```
 
 Tests use a temporary SQLite database and a fake AI, so they never touch real data or use the Gemini quota. Set `TEST_DATABASE_URL` to a Postgres url to also run the real-Postgres tests (they use a throwaway schema).

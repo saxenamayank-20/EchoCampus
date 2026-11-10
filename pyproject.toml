@@ -1,0 +1,39 @@
+[project]
+name = "echocampus"
+version = "1.0.0"
+description = "College grievance portal: complaints, SLA tracking and AI help (FastAPI backend)"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "fastapi>=0.100.0",
+    "uvicorn>=0.23.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "python-dotenv>=1.0.0",
+    "python-multipart>=0.0.9",
+    "email-validator>=2.0.0",
+    "sqlalchemy>=2.0.0",
+    "alembic>=1.13",
+    "psycopg[binary]>=3.2",
+    "pgvector>=0.3",
+    "numpy>=2.0",
+    "redis>=5.0",
+    "bcrypt>=4.0.0",
+    "PyJWT>=2.8.0",
+    "apscheduler>=3.10,<4",
+    "google-genai>=1.0",
+    "pypdf>=4.0",
+    "langgraph>=1.2",
+    "langgraph-checkpoint-postgres>=3.2",
+]
+
+# only needed to test and lint, not on the server (uv sync --no-dev skips them)
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+    "httpx>=0.27.0",
+    "ruff>=0.15",
+]
+
+# it's an app, not a package to publish, so uv only installs the dependencies
+[tool.uv]
+package = false
