@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { ArrowLeft, ShieldCheck, Sparkles, Users } from "lucide-react";
 import { api } from "../api/client";
 import { homeFor, useAuth } from "../auth/AuthContext";
 import { ErrorBox } from "../components/Feedback";
@@ -9,17 +10,68 @@ import PasswordInput from "../components/PasswordInput";
 const DEPARTMENTS = ["Computer Science", "Information Technology", "Electronics", "Mechanical", "Civil",
   "Electrical", "MBA", "BBA", "Commerce", "Arts", "Science", "Other"];
 
+const POINTS = [
+  { icon: Sparkles, text: "AI suggests the category and priority" },
+  { icon: Users, text: "See if others already reported it" },
+  { icon: ShieldCheck, text: "Tracked with deadlines until it's fixed" },
+];
+
+// split screen: brand panel on the left (big screens only), the form on the right
 function AuthCard({ title, subtitle, children, footer }) {
   return (
-    <div className="flex min-h-screen items-center justify-center px-4 py-10">
-      <div className="w-full max-w-md">
-        <div className="mb-6 flex flex-col items-center text-center">
-          <img src="/favicon.svg" alt="" className="mb-3 h-11 w-11" />
-          <h1 className="text-2xl font-semibold">{title}</h1>
-          {subtitle && <p className="mt-1 text-sm text-slate-500">{subtitle}</p>}
+    <div className="flex min-h-screen">
+      <aside className="relative hidden w-[44%] flex-col justify-between overflow-hidden bg-[#060a0f] p-10 text-white lg:flex">
+        <div aria-hidden className="pointer-events-none absolute -left-32 -top-32 h-[28rem] w-[28rem] rounded-full bg-brand-400/20 blur-3xl" />
+        <div aria-hidden className="pointer-events-none absolute -bottom-40 -right-24 h-[26rem] w-[26rem] rounded-full bg-lime-500/10 blur-3xl" />
+        <Link to="/" className="relative flex items-center gap-2.5">
+          <img src="/favicon.svg" alt="" className="h-9 w-9" />
+          <span className="text-lg font-semibold">EchoCampus</span>
+        </Link>
+        <div className="relative max-w-md">
+          <h2 className="text-4xl font-bold leading-tight">
+            Raise it. Track it.<br />
+            <span className="bg-gradient-to-r from-brand-300 to-brand-500 bg-clip-text text-transparent">Get it fixed.</span>
+          </h2>
+          <ul className="mt-8 space-y-4">
+            {POINTS.map(({ icon: Icon, text }) => (
+              <li key={text} className="flex items-center gap-3 text-slate-300">
+                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-400/10 text-brand-400"><Icon size={18} /></span>
+                {text}
+              </li>
+            ))}
+          </ul>
+
+          {/* what a status update looks like, so the panel shows the product */}
+          <div className="mt-10 rounded-xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-mono text-slate-400">Example update</span>
+              <span className="rounded-full bg-amber-400/15 px-2 py-0.5 font-medium text-amber-300">In Progress</span>
+            </div>
+            <p className="mt-2 text-sm font-medium">Wifi not working in hostel block B</p>
+            <p className="mt-1 text-xs text-slate-400">Assigned to the IT/Internet manager · due in 2 days · 3 students affected</p>
+            <div className="mt-3 flex gap-1.5">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <span key={i} className={`h-1.5 flex-1 rounded-full ${i <= 3 ? "bg-brand-400" : "bg-white/10"}`} />
+              ))}
+            </div>
+          </div>
         </div>
-        <div className="card p-6">{children}</div>
-        {footer && <p className="mt-4 text-center text-sm text-slate-500">{footer}</p>}
+        <span />
+      </aside>
+
+      <div className="relative flex flex-1 items-center justify-center px-4 py-16">
+        <Link to="/" className="absolute left-4 top-5 inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 dark:hover:text-white sm:left-6">
+          <ArrowLeft size={16} /> Back to home
+        </Link>
+        <div className="w-full max-w-md">
+          <div className="mb-6 flex flex-col items-center text-center">
+            <Link to="/" aria-label="EchoCampus home"><img src="/favicon.svg" alt="" className="mb-3 h-11 w-11 lg:hidden" /></Link>
+            <h1 className="text-2xl font-semibold">{title}</h1>
+            {subtitle && <p className="mt-1 text-sm text-slate-500">{subtitle}</p>}
+          </div>
+          <div className="card p-6">{children}</div>
+          {footer && <p className="mt-4 text-center text-sm text-slate-500">{footer}</p>}
+        </div>
       </div>
     </div>
   );

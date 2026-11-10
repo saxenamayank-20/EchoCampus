@@ -15,13 +15,15 @@ import Policies from "./pages/admin/Policies";
 import AiUsage from "./pages/admin/AiUsage";
 import TicketDetail from "./pages/TicketDetail";
 import Account from "./pages/Account";
+import Landing from "./pages/Landing";
 
 // charts library is big, only load it when the admin opens the overview
 const Overview = lazy(() => import("./pages/admin/Overview"));
 
+// logged in -> your own dashboard, visitors -> the landing page
 function Home() {
   const { user } = useAuth();
-  return <Navigate to={user ? homeFor(user.role) : "/login"} replace />;
+  return user ? <Navigate to={homeFor(user.role)} replace /> : <Landing />;
 }
 
 export default function App() {
