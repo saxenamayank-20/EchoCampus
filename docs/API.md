@@ -11,6 +11,7 @@ Every route except login/register/health needs `Authorization: Bearer <token>`. 
 | Method | Route | What it does |
 |---|---|---|
 | POST | `/auth/login` | log in with user ID + password, returns a 30 min JWT |
+| POST | `/auth/change-password` | change your own password (needs the current one, same rules as register) |
 | GET | `/auth/me` | the logged-in user |
 | POST | `/auth/register` | creates an unverified student and emails a 6 digit code |
 | POST | `/auth/resend-otp` | send a new 6 digit code (old ones stop working) |

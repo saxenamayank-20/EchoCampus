@@ -31,6 +31,11 @@ class LoginIn(BaseModel):
     password: str
 
 
+class ChangePasswordIn(BaseModel):
+    current_password: str
+    new_password: str
+
+
 class UserOut(BaseModel):
     user_id: str
     name: str

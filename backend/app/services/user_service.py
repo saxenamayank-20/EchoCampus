@@ -66,6 +66,18 @@ class UserService:
             raise NotVerifiedError("Please verify your email first.")
         return user
 
+    def change_password(self, user: User, current: str, new: str) -> None:
+        """needs the current password, so a left-open laptop can't be used to lock the owner out"""
+        if not verify_password(current, user.password_hash):
+            raise InvalidInputError("Current password is wrong.")
+        if current == new:
+            raise InvalidInputError("The new password must be different from the current one.")
+        ok, message = validate_password(new)
+        if not ok:
+            raise InvalidInputError(message)
+        user.password_hash = hash_password(new)
+        self.db.commit()
+
     def get(self, user_id: str) -> User | None:
         return self.users.get_by_user_id(user_id)
 

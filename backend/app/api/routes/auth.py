@@ -5,6 +5,7 @@ from backend.app.core.deps import DB, CurrentUser, Sender
 from backend.app.core.rate_limit import hit
 from backend.app.core.security import create_access_token
 from backend.app.schemas.user import (
+    ChangePasswordIn,
     LoginIn,
     MessageOut,
     RegisterIn,
@@ -56,6 +57,14 @@ def login(body: LoginIn, db: DB):
 @router.get("/me", response_model=UserOut)
 def me(user: CurrentUser):
     return UserOut.of(user)
+
+
+@router.post("/change-password", response_model=MessageOut)
+def change_password(body: ChangePasswordIn, db: DB, user: CurrentUser):
+    # same limit as login, so a stolen token can't be used to guess the current password
+    hit(f"pwchange:{user.user_id}", settings.rate_limit_logins_per_15_min, 15 * 60)
+    UserService(db).change_password(user, body.current_password, body.new_password)
+    return MessageOut(message="Password changed. Use the new one next time you sign in.")
 
 
 def _find(db, user_id: str):

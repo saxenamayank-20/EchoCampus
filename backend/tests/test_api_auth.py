@@ -95,3 +95,35 @@ def test_expired_token_is_401(client, monkeypatch):
     monkeypatch.setattr(settings, "jwt_expire_minutes", -1)
     token = create_access_token("AD100", "admin")
     assert client.get("/auth/me", headers={"Authorization": f"Bearer {token}"}).status_code == 401
+
+
+# ── change password ──────────────────────────────────────────────────────────
+def test_change_password_then_only_the_new_one_works(client, mailbox):
+    uid, h = make_student(client, mailbox)
+    r = client.post("/auth/change-password", headers=h,
+                    json={"current_password": STUDENT_PASSWORD, "new_password": "Fresh@2026"})
+    assert r.status_code == 200
+    assert client.post("/auth/login", json={"user_id": uid, "password": STUDENT_PASSWORD}).status_code == 401
+    login(client, uid, "Fresh@2026")
+
+
+def test_change_password_rules(client, mailbox):
+    _, h = make_student(client, mailbox)
+    cases = [
+        ({"current_password": "Wrong@123", "new_password": "Fresh@2026"}, "Current password is wrong"),
+        ({"current_password": STUDENT_PASSWORD, "new_password": STUDENT_PASSWORD}, "must be different"),
+        ({"current_password": STUDENT_PASSWORD, "new_password": "weak"}, "at least"),
+    ]
+    for body, text in cases:
+        r = client.post("/auth/change-password", headers=h, json=body)
+        assert r.status_code == 422 and text in r.json()["error"]["message"], r.text
+
+
+def test_change_password_needs_login_and_works_for_staff(client):
+    r = client.post("/auth/change-password", json={"current_password": "a", "new_password": "b"})
+    assert r.status_code == 401
+    h = login(client, "GM101")
+    r = client.post("/auth/change-password", headers=h,
+                    json={"current_password": "Test@1234", "new_password": "Manager@2026"})
+    assert r.status_code == 200
+    login(client, "GM101", "Manager@2026")

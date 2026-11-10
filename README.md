@@ -18,7 +18,7 @@ In most colleges a complaint goes into an email or a paper form, and nobody know
 - Ask the policy assistant questions about rules, fees and timings. It answers only from the student handbook and shows the page
 
 **Grievance managers**
-- See only the complaints of their own categories, with filters and paging
+- See only the complaints of their own categories, in Active and Resolved tabs, with filters and paging
 - Move complaints through Assigned → In Progress → Resolved (wrong moves are blocked), change the priority, post updates to the admin
 - Get an AI-drafted reply based on how similar complaints were fixed before (a draft only, nothing is sent automatically)
 
@@ -29,11 +29,20 @@ In most colleges a complaint goes into an email or a paper form, and nobody know
 - An AI usage page: calls, failures, tokens and speed (average and p95) per AI feature
 
 **Behind the scenes**
+- A "My account" page for every role: your details, and a password change that asks for the current password first
 - JWT login, role checks on every route, rate limits (5 complaints per hour, 10 login tries per 15 minutes for each user ID)
 - SLA deadlines by priority, and a job every 15 minutes that escalates overdue complaints
 - In-app notifications (bell) and email for status changes
 - Light and dark mode, and the site can be installed as an app from the browser (it has its own icon)
 - Submitting and closing run as LangGraph graphs. Closing pauses for the student and then the admin, and the paused state is saved in Postgres, so it survives a restart
+
+## Screenshots
+
+| | |
+|---|---|
+| ![Policy assistant answering from the handbook with the page](docs/screenshots/policy-assistant.png) Policy assistant | ![Admin dashboard in dark mode](docs/screenshots/admin-dashboard-dark.png) Admin dashboard (dark mode) |
+| ![Ticket page with the status steps and timeline](docs/screenshots/ticket-timeline.png) Ticket timeline | ![Manager complaint list with Active and Resolved tabs](docs/screenshots/manager-queue.png) Manager's complaints |
+| ![My account page with details and change password](docs/screenshots/my-account.png) My account | |
 
 ## Tech stack
 
@@ -168,5 +177,4 @@ Tests use a temporary SQLite database and a fake AI, so they never touch real da
 - With a local SQLite database, paused closing graphs are kept in memory only. After a restart the same step runs directly with the same rules, so nothing gets stuck.
 - Render's free plan sleeps after 15 minutes without visitors, so the first load after that takes about a minute, and the 15-minute SLA job and the Monday report don't run while it sleeps.
 - The Docker setup uses an in-memory cache instead of Redis, which is fine for one backend.
-
-![Policy assistant answering from the handbook](docs/screenshots/policy-assistant.png)
+- Changing the password doesn't sign out other open sessions; their login token simply runs out within 30 minutes.

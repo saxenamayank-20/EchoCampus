@@ -1,4 +1,4 @@
-import { Link, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Clock, Flame, Inbox, TriangleAlert } from "lucide-react";
 import { api } from "../../api/client";
@@ -61,7 +61,7 @@ export default function Queue() {
       />
       {!resolved && (
         <p className="mt-3 text-xs text-slate-500">
-          Open a ticket to update its status, post an update for the admin or <Link to="?tab=resolved" className="text-brand-600 dark:text-brand-400">see resolved ones</Link>.
+          Open a ticket to update its status or post an update for the admin.
         </p>
       )}
     </div>

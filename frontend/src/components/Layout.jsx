@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import {
   BarChart3, BookOpen, CheckSquare, Cpu, FilePlus2, Inbox, LayoutList, LogOut, Megaphone, Menu, MessageCircleQuestion,
-  Moon, Sun, Ticket, Users, X,
+  Moon, Sun, Ticket, UserRound, Users, X,
 } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import { roleLabel } from "../lib/format";
@@ -15,9 +15,9 @@ const NAV = {
     { to: "/student/tickets", label: "My tickets", icon: Ticket },
     { to: "/student/assistant", label: "Ask a question", icon: MessageCircleQuestion },
   ],
+  // active / resolved are tabs on the page itself, so one link is enough here
   grievance_manager: [
-    { to: "/manager/queue", label: "Active complaints", icon: Inbox, end: true },
-    { to: "/manager/queue?tab=resolved", label: "Resolved", icon: CheckSquare },
+    { to: "/manager/queue", label: "Complaints", icon: Inbox },
   ],
   admin: [
     { to: "/admin", label: "Overview", icon: BarChart3, end: true },
@@ -29,6 +29,9 @@ const NAV = {
     { to: "/admin/ai-usage", label: "AI usage", icon: Cpu },
   ],
 };
+
+// every role gets this one at the end
+const ACCOUNT = { to: "/account", label: "My account", icon: UserRound };
 
 function isActive(location, to, end) {
   const [path, query] = to.split("?");
@@ -51,7 +54,7 @@ function Sidebar({ onNavigate }) {
       </div>
 
       <nav className="flex-1 space-y-1 px-3">
-        {NAV[user.role].map(({ to, label, icon: Icon, end }) => (
+        {[...NAV[user.role], ACCOUNT].map(({ to, label, icon: Icon, end }) => (
           <Link
             key={to}
             to={to}

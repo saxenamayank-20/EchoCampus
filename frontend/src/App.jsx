@@ -13,6 +13,7 @@ import NewComplaint from "./pages/student/NewComplaint";
 import Policies from "./pages/admin/Policies";
 import AiUsage from "./pages/admin/AiUsage";
 import TicketDetail from "./pages/TicketDetail";
+import Account from "./pages/Account";
 
 // charts library is big, only load it when the admin opens the overview
 const Overview = lazy(() => import("./pages/admin/Overview"));
@@ -34,6 +35,7 @@ export default function App() {
       <Route element={<RequireRole />}>
         <Route element={<Layout />}>
           <Route path="/tickets/:ticketId" element={<TicketDetail />} />
+          <Route path="/account" element={<Account />} />
 
           <Route element={<RequireRole roles={["student"]} />}>
             <Route path="/student/new" element={<NewComplaint />} />
