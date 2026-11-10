@@ -29,7 +29,7 @@ function ComplaintCards({ params, empty, only = () => true }) {
   return (
     <div className="grid gap-3 md:grid-cols-2">
       {items.map((c) => (
-        <Link key={c.ticket_id} to={`/tickets/${c.ticket_id}`} className="card block p-4 transition hover:border-indigo-300">
+        <Link key={c.ticket_id} to={`/tickets/${c.ticket_id}`} className="card block p-4 transition hover:border-brand-500">
           <div className="mb-2 flex items-start justify-between gap-2">
             <span className="font-mono text-xs text-slate-500">{c.ticket_id}</span>
             <div className="flex gap-1.5"><PriorityBadge priority={c.priority} /><StatusBadge status={c.status} /></div>
@@ -90,7 +90,7 @@ export function ManagerUpdates() {
                 <div className="mb-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
                   <span className="font-medium text-slate-700 dark:text-slate-200">{u.manager_name}</span>
                   <span>·</span>
-                  <Link to={`/tickets/${u.ticket_id}`} className="font-mono text-indigo-600">{u.ticket_id}</Link>
+                  <Link to={`/tickets/${u.ticket_id}`} className="font-mono text-brand-600 dark:text-brand-400">{u.ticket_id}</Link>
                   <span>·</span><span>{u.category}</span><span>·</span><span>{formatDateTime(u.created_at)}</span>
                   <PriorityBadge priority={u.priority} /><StatusBadge status={u.status} />
                 </div>

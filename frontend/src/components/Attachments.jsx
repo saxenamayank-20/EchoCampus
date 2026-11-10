@@ -101,11 +101,11 @@ export default function Attachments({ ticketId, canUpload }) {
                 </p>
               </div>
               {(isImage(f) || isPdf(f)) && (
-                <button onClick={() => open(f)} className="text-slate-400 hover:text-indigo-600" aria-label="Preview">
+                <button onClick={() => open(f)} className="text-slate-400 hover:text-brand-600 dark:hover:text-brand-400" aria-label="Preview">
                   <Eye size={16} />
                 </button>
               )}
-              <button onClick={() => download(f)} className="text-slate-400 hover:text-indigo-600" aria-label="Download">
+              <button onClick={() => download(f)} className="text-slate-400 hover:text-brand-600 dark:hover:text-brand-400" aria-label="Download">
                 <Download size={16} />
               </button>
             </li>

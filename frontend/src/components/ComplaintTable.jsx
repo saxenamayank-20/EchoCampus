@@ -89,7 +89,7 @@ export default function ComplaintTable({ fixed = {}, statusOptions = [], showStu
               {data.items.map((c) => (
                 <tr key={c.ticket_id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
                   <td className="whitespace-nowrap px-4 py-3 font-mono text-xs">
-                    <Link to={`/tickets/${c.ticket_id}`} className="text-indigo-600 hover:underline dark:text-indigo-400">
+                    <Link to={`/tickets/${c.ticket_id}`} className="text-brand-600 hover:underline dark:text-brand-400">
                       {c.ticket_id}
                     </Link>
                   </td>

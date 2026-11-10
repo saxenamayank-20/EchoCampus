@@ -90,14 +90,14 @@ function ManagerPanel({ complaint }) {
           <div>
             <div className="mb-1 flex items-center justify-between gap-2">
               <label className="label mb-0" htmlFor="rm">Remark for the student</label>
-              <button type="button" className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:underline disabled:opacity-50"
+              <button type="button" className="inline-flex items-center gap-1 text-xs text-brand-600 dark:text-brand-400 hover:underline disabled:opacity-50"
                 disabled={suggest.isPending} onClick={() => suggest.mutate()}>
                 <Sparkles size={13} /> {suggest.isPending ? "Thinking…" : "Suggest a reply with AI"}
               </button>
             </div>
             <textarea id="rm" rows={4} className="input" value={remark} onChange={(e) => setRemark(e.target.value)} placeholder="What was done?" />
             {draftInfo && (
-              <div className="mt-2 rounded-lg bg-indigo-50/70 p-2.5 text-xs text-indigo-900 dark:bg-indigo-950/40 dark:text-indigo-200">
+              <div className="mt-2 rounded-lg bg-brand-50/70 p-2.5 text-xs text-brand-900 dark:bg-brand-950/40 dark:text-brand-200">
                 <p className="font-medium">AI draft, edit it before saving. Nothing is sent until you click Save.</p>
                 {draftInfo.steps.length > 0 && <ul className="ml-4 mt-1 list-disc">{draftInfo.steps.map((s) => <li key={s}>{s}</li>)}</ul>}
                 {draftInfo.based_on.length > 0 && <p className="mt-1">Based on: {draftInfo.based_on.map((b) => b.ticket_id).join(", ")}</p>}
@@ -351,7 +351,7 @@ export default function TicketDetail() {
               )}
             </dl>
             {c.ai_summary && (
-              <p className="mb-3 flex gap-2 rounded-lg border border-indigo-100 bg-indigo-50/60 p-3 text-sm text-indigo-900 dark:border-indigo-900 dark:bg-indigo-950/40 dark:text-indigo-200">
+              <p className="mb-3 flex gap-2 rounded-lg border border-brand-100 bg-brand-50/60 p-3 text-sm text-brand-900 dark:border-brand-900 dark:bg-brand-950/40 dark:text-brand-200">
                 <Sparkles size={16} className="mt-0.5 shrink-0" /> <span><b>AI summary:</b> {c.ai_summary}</span>
               </p>
             )}

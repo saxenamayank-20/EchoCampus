@@ -28,7 +28,7 @@ export default function MyTickets() {
         actions={<Link to="/student/new" className="btn-primary">New complaint</Link>}
       />
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label="Total" value={total.data} icon={Ticket} tone="indigo" />
+        <StatCard label="Total" value={total.data} icon={Ticket} tone="brand" />
         <StatCard label="Active" value={active.data} icon={Clock} tone="amber" />
         <StatCard label="Resolved / closed" value={done.data} icon={CheckCircle2} tone="green" />
         <StatCard label="Open critical" value={critical.data} icon={Flame} tone="red" />
@@ -52,7 +52,7 @@ function Supporting() {
         {data.map((c) => (
           <li key={c.ticket_id}>
             <Link to={`/tickets/${c.ticket_id}`} className="flex flex-wrap items-center gap-2 px-5 py-3 text-sm hover:bg-slate-50 dark:hover:bg-slate-800/40">
-              <span className="font-mono text-xs text-indigo-600">{c.ticket_id}</span>
+              <span className="font-mono text-xs text-brand-600 dark:text-brand-400">{c.ticket_id}</span>
               <span className="min-w-0 flex-1 truncate">{c.title}</span>
               <span className="text-xs text-slate-500">{c.supporters_count + 1} affected</span>
               <StatusBadge status={c.status} />

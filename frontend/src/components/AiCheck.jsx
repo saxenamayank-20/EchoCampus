@@ -21,8 +21,8 @@ export default function AiCheck({ result, category, onUseCategory, onSupport, su
     <div className="space-y-4">
       {result.crisis && <CrisisCard crisis={result.crisis} />}
 
-      <div className="rounded-xl border border-indigo-200 bg-indigo-50/60 p-4 text-sm dark:border-indigo-900 dark:bg-indigo-950/40">
-        <p className="flex items-center gap-2 font-semibold text-indigo-800 dark:text-indigo-200">
+      <div className="rounded-xl border border-brand-200 bg-brand-50/60 p-4 text-sm dark:border-brand-900 dark:bg-brand-950/40">
+        <p className="flex items-center gap-2 font-semibold text-brand-800 dark:text-brand-200">
           <Sparkles size={16} /> {result.used_ai ? "AI check" : "Quick check (AI unavailable, keyword rules used)"}
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-2">

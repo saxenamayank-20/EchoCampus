@@ -33,7 +33,7 @@ export default function AiUsage() {
       <ErrorBox error={error} />
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label="AI calls" value={num(t?.calls)} icon={Cpu} tone="indigo" />
+        <StatCard label="AI calls" value={num(t?.calls)} icon={Cpu} tone="brand" />
         <StatCard label="Success rate" value={t?.success_rate == null ? "—" : `${t.success_rate}%`} icon={CheckCircle2} tone="green" />
         <StatCard label="Failed calls" value={num(t?.failed)} icon={AlertTriangle} tone={t?.failed ? "red" : "slate"} />
         <StatCard label="Average speed" value={ms(t?.avg_ms)} icon={Gauge} tone="amber" />

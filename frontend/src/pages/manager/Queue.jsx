@@ -40,7 +40,7 @@ export default function Queue() {
     <div>
       <PageHeader title="Complaints" subtitle={`Your categories: ${user.categories?.join(", ") || "—"}`} />
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label="Open" value={open.data} icon={Inbox} tone="indigo" />
+        <StatCard label="Open" value={open.data} icon={Inbox} tone="brand" />
         <StatCard label="Critical" value={critical.data} icon={Flame} tone="red" />
         <StatCard label="High" value={high.data} icon={TriangleAlert} tone="amber" />
         <StatCard label="In progress" value={inProgress.data} icon={Clock} />
@@ -61,7 +61,7 @@ export default function Queue() {
       />
       {!resolved && (
         <p className="mt-3 text-xs text-slate-500">
-          Open a ticket to update its status, post an update for the admin or <Link to="?tab=resolved" className="text-indigo-600">see resolved ones</Link>.
+          Open a ticket to update its status, post an update for the admin or <Link to="?tab=resolved" className="text-brand-600 dark:text-brand-400">see resolved ones</Link>.
         </p>
       )}
     </div>

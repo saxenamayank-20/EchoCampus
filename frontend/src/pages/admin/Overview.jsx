@@ -99,7 +99,7 @@ function OverdueList() {
           {data.items.map((c) => (
             <li key={c.ticket_id}>
               <Link to={`/tickets/${c.ticket_id}`} className="flex flex-wrap items-center gap-2 px-5 py-3 text-sm hover:bg-slate-50 dark:hover:bg-slate-800/40">
-                <span className="font-mono text-xs text-indigo-600">{c.ticket_id}</span>
+                <span className="font-mono text-xs text-brand-600 dark:text-brand-400">{c.ticket_id}</span>
                 <span className="min-w-0 flex-1 truncate">{c.title}</span>
                 <PriorityBadge priority={c.priority} /> <StatusBadge status={c.status} />
                 <span className="text-xs text-red-600">due {formatDateTime(c.sla_due_at)}</span>
@@ -130,7 +130,7 @@ function WeeklyReport() {
   return (
     <div className="card mb-6 overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-5 py-3 dark:border-slate-800">
-        <h2 className="flex items-center gap-2 text-sm font-semibold"><Sparkles size={16} className="text-indigo-500" /> Weekly report</h2>
+        <h2 className="flex items-center gap-2 text-sm font-semibold"><Sparkles size={16} className="text-brand-600 dark:text-brand-400" /> Weekly report</h2>
         <button className="btn-secondary px-3 py-1.5 text-xs" onClick={() => run.mutate()} disabled={run.isPending}>
           <RefreshCw size={14} className={run.isPending ? "animate-spin" : ""} /> {run.isPending ? "Writing..." : "Generate now"}
         </button>
@@ -168,7 +168,7 @@ export default function Overview() {
     <div>
       <PageHeader title="Overview" subtitle="How complaints are moving across campus" />
       <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7">
-        <StatCard label="Total" value={counts.Total} icon={LayoutList} tone="indigo" />
+        <StatCard label="Total" value={counts.Total} icon={LayoutList} tone="brand" />
         <StatCard label="Pending" value={counts.Pending} icon={Hourglass} />
         <StatCard label="In progress" value={counts["In Progress"]} icon={Clock} tone="amber" />
         <StatCard label="Resolved" value={counts.Resolved} icon={CheckCircle2} tone="green" />
@@ -193,7 +193,7 @@ export default function Overview() {
                 <XAxis dataKey="label" fontSize={11} interval={4} />
                 <YAxis allowDecimals={false} fontSize={11} width={28} />
                 <Tooltip {...tooltipStyle} />
-                <Line type="monotone" dataKey="count" stroke="#4f46e5" strokeWidth={2} dot={false} name="Complaints" />
+                <Line type="monotone" dataKey="count" stroke="#65a30d" strokeWidth={2} dot={false} name="Complaints" />
               </LineChart>
             </ResponsiveContainer>
           </ChartCard>
@@ -217,9 +217,9 @@ export default function Overview() {
               <BarChart data={byCategory} layout="vertical" margin={{ left: 30 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                 <XAxis type="number" allowDecimals={false} fontSize={11} />
-                <YAxis type="category" dataKey="name" fontSize={11} width={90} />
+                <YAxis type="category" dataKey="name" fontSize={11} width={90} interval={0} />
                 <Tooltip {...tooltipStyle} />
-                <Bar dataKey="value" name="Complaints" fill="#6366f1" radius={[0, 4, 4, 0]} />
+                <Bar dataKey="value" name="Complaints" fill="#84cc16" radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </ChartCard>

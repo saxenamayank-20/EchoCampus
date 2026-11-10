@@ -71,7 +71,7 @@ export default function Policies() {
           <ul className="divide-y divide-slate-100 dark:divide-slate-800">
             {data.map((d) => (
               <li key={d.id} className="flex flex-wrap items-center gap-3 px-5 py-3 text-sm">
-                <FileText size={18} className="text-indigo-500" />
+                <FileText size={18} className="text-brand-600 dark:text-brand-400" />
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium">{d.title}</p>
                   <p className="text-xs text-slate-500">{d.filename} · {d.pages} pages · {d.chunks} chunks · {formatDateTime(d.updated_at)}</p>

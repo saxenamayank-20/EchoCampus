@@ -53,7 +53,7 @@ export default function NotificationBell() {
         <div className="card absolute right-0 z-40 mt-2 w-80 max-w-[calc(100vw-2rem)] overflow-hidden shadow-xl lg:left-0 lg:right-auto">
           <div className="flex items-center justify-between border-b border-slate-200 px-4 py-2.5 dark:border-slate-800">
             <span className="text-sm font-semibold">Notifications</span>
-            {unread > 0 && <button onClick={readAll} className="text-xs text-indigo-600 hover:underline">Mark all read</button>}
+            {unread > 0 && <button onClick={readAll} className="text-xs text-brand-600 dark:text-brand-400 hover:underline">Mark all read</button>}
           </div>
           <ul className="max-h-96 overflow-y-auto">
             {!data?.items.length && <li className="px-4 py-6 text-center text-sm text-slate-500">Nothing yet.</li>}
@@ -61,7 +61,7 @@ export default function NotificationBell() {
               <li key={n.id}>
                 <button onClick={() => openItem(n)} className={`block w-full px-4 py-3 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-800 ${n.is_read ? "text-slate-500" : ""}`}>
                   <span className="flex items-start gap-2">
-                    {!n.is_read && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-indigo-500" />}
+                    {!n.is_read && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-brand-500" />}
                     <span>
                       {n.message}
                       <span className="mt-0.5 block text-xs text-slate-400">{formatDateTime(n.created_at)}</span>

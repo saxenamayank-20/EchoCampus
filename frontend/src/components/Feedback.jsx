@@ -52,7 +52,7 @@ export function PageHeader({ title, subtitle, actions }) {
 export function StatCard({ label, value, tone = "slate", icon: Icon }) {
   const tones = {
     slate: "text-slate-600 bg-slate-100 dark:bg-slate-800 dark:text-slate-300",
-    indigo: "text-indigo-600 bg-indigo-50 dark:bg-indigo-950 dark:text-indigo-300",
+    brand: "text-brand-700 bg-brand-100 dark:bg-brand-400/10 dark:text-brand-400",
     amber: "text-amber-600 bg-amber-50 dark:bg-amber-950 dark:text-amber-300",
     green: "text-emerald-600 bg-emerald-50 dark:bg-emerald-950 dark:text-emerald-300",
     red: "text-red-600 bg-red-50 dark:bg-red-950 dark:text-red-300",

@@ -43,7 +43,7 @@ export function StudentConfirmPanel({ complaint, onDone }) {
   });
 
   return (
-    <section className="card border-indigo-200 p-5 dark:border-indigo-900">
+    <section className="card border-brand-200 p-5 dark:border-brand-900">
       <h2 className="font-semibold">Was it really fixed?</h2>
       <p className="mt-1 text-sm text-slate-500">
         The manager marked this resolved: “{complaint.confirmation.manager_note}”. Please answer by {formatDateTime(complaint.confirmation.due_at)}.

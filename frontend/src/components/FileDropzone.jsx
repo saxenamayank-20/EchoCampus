@@ -58,7 +58,7 @@ export default function FileDropzone({ items, onChange, maxFiles = MAX_FILES, di
         onDragLeave={() => setDragging(false)}
         onDrop={(e) => { e.preventDefault(); setDragging(false); if (!disabled) add(e.dataTransfer.files); }}
         className={`flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-4 py-8 text-center transition
-          ${dragging ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-950/40" : "border-slate-300 hover:border-indigo-400 dark:border-slate-700"}
+          ${dragging ? "border-brand-500 bg-brand-50 dark:bg-brand-950/40" : "border-slate-300 hover:border-brand-400 dark:border-slate-700"}
           ${disabled ? "pointer-events-none opacity-60" : ""}`}
       >
         <UploadCloud className="mb-2 text-slate-400" size={28} />
@@ -94,13 +94,13 @@ export default function FileDropzone({ items, onChange, maxFiles = MAX_FILES, di
                 <p className="text-xs text-slate-500">{i.kind.toUpperCase()} · {formatSize(i.file.size)}</p>
                 {i.progress > 0 && (
                   <div className="mt-1 h-1.5 rounded-full bg-slate-200 dark:bg-slate-700">
-                    <div className={`h-1.5 rounded-full ${i.error ? "bg-red-500" : "bg-indigo-500"}`} style={{ width: `${i.progress}%` }} />
+                    <div className={`h-1.5 rounded-full ${i.error ? "bg-red-500" : "bg-brand-500"}`} style={{ width: `${i.progress}%` }} />
                   </div>
                 )}
                 {i.error && <p className="text-xs text-red-600">{i.error}</p>}
               </div>
               {i.url && (
-                <button type="button" onClick={() => setPreview(i)} className="text-slate-400 hover:text-indigo-600" aria-label="Preview">
+                <button type="button" onClick={() => setPreview(i)} className="text-slate-400 hover:text-brand-600 dark:hover:text-brand-400" aria-label="Preview">
                   <Eye size={16} />
                 </button>
               )}

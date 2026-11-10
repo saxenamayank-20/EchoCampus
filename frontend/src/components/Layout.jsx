@@ -58,7 +58,7 @@ function Sidebar({ onNavigate }) {
             onClick={onNavigate}
             className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition ${
               isActive(location, to, end)
-                ? "bg-indigo-50 font-medium text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300"
+                ? "bg-brand-100 font-medium text-brand-800 dark:bg-brand-400/10 dark:text-brand-400"
                 : "text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
             }`}
           >
@@ -101,7 +101,7 @@ export default function Layout() {
 
       {/* mobile top bar + slide-in menu */}
       <header className="sticky top-0 z-30 flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900 lg:hidden">
-        <span className="font-semibold">EchoCampus</span>
+        <span className="flex items-center gap-2 font-semibold"><img src="/favicon.svg" alt="" className="h-7 w-7" />EchoCampus</span>
         <div className="flex items-center gap-2">
           <NotificationBell />
           <button onClick={() => setOpen(true)} aria-label="Open menu" className="btn-secondary px-2.5 py-1.5">

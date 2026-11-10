@@ -56,7 +56,7 @@ export function LoginPage() {
     <AuthCard
       title="Sign in to EchoCampus"
       subtitle="Raise and track campus complaints"
-      footer={<>New student? <Link to="/register" className="font-medium text-indigo-600">Create an account</Link></>}
+      footer={<>New student? <Link to="/register" className="font-medium text-brand-600 dark:text-brand-400">Create an account</Link></>}
     >
       <form onSubmit={submit} className="space-y-4">
         <div>
@@ -108,7 +108,7 @@ export function RegisterPage() {
     <AuthCard
       title="Student registration"
       subtitle="Your student ID is generated for you"
-      footer={<>Already registered? <Link to="/login" className="font-medium text-indigo-600">Sign in</Link></>}
+      footer={<>Already registered? <Link to="/login" className="font-medium text-brand-600 dark:text-brand-400">Sign in</Link></>}
     >
       <form onSubmit={submit} className="space-y-4">
         <div>
@@ -180,7 +180,7 @@ export function VerifyOtpPage() {
     <AuthCard
       title="Verify your email"
       subtitle={params.get("new") ? `Save your student ID: ${userId}. We sent a 6 digit code to your email.` : "Enter the 6 digit code from your email."}
-      footer={<Link to="/login" className="font-medium text-indigo-600">Back to sign in</Link>}
+      footer={<Link to="/login" className="font-medium text-brand-600 dark:text-brand-400">Back to sign in</Link>}
     >
       <form onSubmit={submit} className="space-y-4">
         <div>
@@ -194,7 +194,7 @@ export function VerifyOtpPage() {
         </div>
         <ErrorBox error={error} />
         <button className="btn-primary w-full" disabled={busy || code.length !== 6}>{busy ? "Checking…" : "Verify"}</button>
-        <button type="button" onClick={resend} className="w-full text-sm text-indigo-600 hover:underline" disabled={!userId}>
+        <button type="button" onClick={resend} className="w-full text-sm text-brand-600 dark:text-brand-400 hover:underline" disabled={!userId}>
           Send a new code
         </button>
       </form>
