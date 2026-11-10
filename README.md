@@ -18,7 +18,7 @@ In most colleges a complaint goes into an email or a paper form, and nobody know
 - Ask the policy assistant questions about rules, fees and timings. It answers only from the student handbook and shows the page
 
 **Grievance managers**
-- See only the complaints of their own categories, in Active and Resolved tabs, with filters and paging
+- See only the complaints of their own categories: a summary page with boxes (Critical, High, escalated, per category…) where each box opens just those complaints, and Active / Resolved lists in the sidebar, with filters and paging
 - Move complaints through Assigned → In Progress → Resolved (wrong moves are blocked), change the priority, post updates to the admin
 - Get an AI-drafted reply based on how similar complaints were fixed before (a draft only, nothing is sent automatically)
 
@@ -41,7 +41,7 @@ In most colleges a complaint goes into an email or a paper form, and nobody know
 | | |
 |---|---|
 | ![Policy assistant answering from the handbook with the page](docs/screenshots/policy-assistant.png) Policy assistant | ![Admin dashboard in dark mode](docs/screenshots/admin-dashboard-dark.png) Admin dashboard (dark mode) |
-| ![Ticket page with the status steps and timeline](docs/screenshots/ticket-timeline.png) Ticket timeline | ![Manager complaint list with Active and Resolved tabs](docs/screenshots/manager-queue.png) Manager's complaints |
+| ![Ticket page with the status steps and timeline](docs/screenshots/ticket-timeline.png) Ticket timeline | ![Manager summary page with boxes and the Active / Resolved menu](docs/screenshots/manager-queue.png) Manager's summary |
 | ![My account page with details and change password](docs/screenshots/my-account.png) My account | |
 
 ## Tech stack
