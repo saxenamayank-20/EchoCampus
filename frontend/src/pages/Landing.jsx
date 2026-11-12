@@ -55,7 +55,7 @@ export default function Landing() {
             {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
           </button>
           <Link to="/login" className="whitespace-nowrap px-2 text-sm font-medium text-slate-700 hover:text-slate-950 dark:text-slate-300 dark:hover:text-white">Log in</Link>
-          {/* on small phones the big "Raise a complaint" button below does the same */}
+          {/* on small phones the big "Get started" button below does the same */}
           <Link to="/register" className="btn-primary hidden whitespace-nowrap shadow-lg shadow-brand-400/30 dark:shadow-none sm:inline-flex">Get started</Link>
         </nav>
       </header>
@@ -76,9 +76,9 @@ export default function Landing() {
           </p>
           <div className="mt-10 flex flex-wrap justify-center gap-3">
             <Link to="/register" className="btn-primary px-6 py-3 text-base shadow-lg shadow-brand-400/30 dark:shadow-none">
-              Raise a complaint <ArrowRight size={18} />
+              Get started <ArrowRight size={18} />
             </Link>
-            <Link to="/login" className="btn-secondary px-6 py-3 text-base dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10">I have an account</Link>
+            <Link to="/login" className="btn-secondary px-6 py-3 text-base dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10">Log in</Link>
           </div>
 
           {/* how a complaint moves, the same steps the app uses */}
@@ -147,9 +147,9 @@ export default function Landing() {
             <p className="relative mx-auto mt-3 max-w-xl text-slate-300">
               Raise it in a minute and follow it until it&apos;s really fixed.
             </p>
-            <div className="relative mt-8 flex flex-wrap justify-center gap-3">
-              <Link to="/register" className="btn-primary px-6 py-3 text-base">Create your account <ArrowRight size={18} /></Link>
-              <Link to="/login" className="btn border border-white/20 px-6 py-3 text-base text-white hover:bg-white/10">Log in</Link>
+            {/* one button here, log in is already in the top bar */}
+            <div className="relative mt-8 flex justify-center">
+              <Link to="/register" className="btn-primary px-6 py-3 text-base">Get started <ArrowRight size={18} /></Link>
             </div>
           </div>
         </section>
