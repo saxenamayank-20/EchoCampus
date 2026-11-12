@@ -33,6 +33,8 @@ class Settings(BaseSettings):
     smtp_user: str = ""
     smtp_password: str = ""
     smtp_from: str = ""
+    # logo in emails. empty = the frontend's icon. set it for local runs, mail apps can't load localhost
+    email_logo_url: str = ""
     otp_expire_minutes: int = 10
     otp_max_attempts: int = 5
 

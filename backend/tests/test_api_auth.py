@@ -24,6 +24,7 @@ def test_register_sends_otp_and_blocks_login_until_verified(client, mailbox):
     assert uid == "ST101"
     # the id is also mailed to them
     assert mailbox.sent[-1][0] == NEW["email"] and "ST101" in mailbox.sent[-1][2]
+    assert "ST101" in mailbox.html and "<img" in mailbox.html     # the html welcome mail
     me = client.get("/auth/me", headers=login(client, uid, STUDENT_PASSWORD)).json()
     assert me["role"] == "student" and me["is_verified"]
 

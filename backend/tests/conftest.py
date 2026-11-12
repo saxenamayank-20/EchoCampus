@@ -75,8 +75,9 @@ class FakeSender:
     def __init__(self):
         self.sent: list[tuple[str, str, str]] = []
 
-    def send(self, to, subject, body):
+    def send(self, to, subject, body, html=None):
         self.sent.append((to, subject, body))
+        self.html = html
 
     def last_code(self) -> str:
         return re.search(r"\d{6}", self.sent[-1][2]).group()

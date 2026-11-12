@@ -17,6 +17,7 @@ from backend.app.schemas.user import (
     VerifyOtpIn,
     VerifyOut,
 )
+from backend.app.services.email_templates import welcome_email
 from backend.app.services.errors import ConflictError, EmailFailedError, NotFoundError
 from backend.app.services.otp_service import OtpService
 from backend.app.services.user_service import UserService
@@ -45,9 +46,8 @@ def verify_otp(body: VerifyOtpIn, db: DB, sender: Sender):
         raise ConflictError("This email is already verified. Log in with your student ID.")
     OtpService(db, sender).verify(user, body.code)
     # keep a copy of the id in their inbox, in case they close the page
-    sender.send(user.email, "Your EchoCampus student ID",
-                f"Hi {user.name},\n\nYour email is verified. Your student ID is {user.user_id}.\n"
-                f"You need it with your password to log in.")
+    subject, text, html = welcome_email(user.name, user.user_id, user.email)
+    sender.send(user.email, subject, text, html)
     return VerifyOut(user_id=user.user_id, message="Email verified. You can log in now.")
 
 

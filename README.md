@@ -102,6 +102,7 @@ GEMINI_API_KEY          # empty = no AI, keyword rules only
 REDIS_URL               # empty = in-memory cache
 BREVO_API_KEY           # email over https (Brevo); needed on Render's free plan, which blocks SMTP
 SMTP_HOST  SMTP_PORT  SMTP_USER  SMTP_PASSWORD  SMTP_FROM   # or plain SMTP; all empty = emails are printed in the backend log
+EMAIL_LOGO_URL          # optional: logo image in the emails, defaults to the frontend icon
 FRONTEND_ORIGIN         # the frontend address, for CORS
 ALLOWED_EMAIL_DOMAINS   # e.g. your college domain; empty = any
 COUNSELLOR_CONTACT  CRISIS_HELPLINE

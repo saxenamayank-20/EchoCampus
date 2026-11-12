@@ -12,16 +12,16 @@ BREVO_URL = "https://api.brevo.com/v3/smtp/email"
 class EmailSender:
     """sends mail with brevo (https) or smtp. with neither set it prints the mail instead (dev mode)"""
 
-    def send(self, to: str, subject: str, body: str) -> bool:
-        """False when the mail couldn't go out (the reason is in the log)"""
+    def send(self, to: str, subject: str, body: str, html: str | None = None) -> bool:
+        """False when the mail couldn't go out (the reason is in the log). body is the plain text version"""
         if settings.brevo_api_key:
-            return self._send_brevo(to, subject, body)
+            return self._send_brevo(to, subject, body, html)
         if settings.smtp_host:
-            return self._send_smtp(to, subject, body)
+            return self._send_smtp(to, subject, body, html)
         print(f"[EMAIL dev] to={to} | {subject} | {body}")
         return True
 
-    def _send_brevo(self, to: str, subject: str, body: str) -> bool:
+    def _send_brevo(self, to: str, subject: str, body: str, html: str | None = None) -> bool:
         # render free plan blocks the smtp ports, https (443) is fine
         payload = {
             "sender": {"name": "EchoCampus", "email": settings.smtp_from or settings.smtp_user},
@@ -29,6 +29,8 @@ class EmailSender:
             "subject": subject,
             "textContent": body,
         }
+        if html:
+            payload["htmlContent"] = html
         req = urllib.request.Request(
             BREVO_URL, data=json.dumps(payload).encode(), method="POST",
             headers={"api-key": settings.brevo_api_key, "Content-Type": "application/json",
@@ -44,12 +46,14 @@ class EmailSender:
             print(f"[EMAIL error] to={to} | {subject} | {e}")
         return False
 
-    def _send_smtp(self, to: str, subject: str, body: str) -> bool:
+    def _send_smtp(self, to: str, subject: str, body: str, html: str | None = None) -> bool:
         msg = EmailMessage()
         msg["From"] = settings.smtp_from or settings.smtp_user
         msg["To"] = to
         msg["Subject"] = subject
         msg.set_content(body)
+        if html:
+            msg.add_alternative(html, subtype="html")
         try:
             with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=10) as server:
                 server.starttls()
