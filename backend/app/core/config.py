@@ -25,7 +25,9 @@ class Settings(BaseSettings):
     allowed_email_domains: str = ""
     frontend_origin: str = "http://localhost:5173"
 
-    # email. no smtp host = otp and mails are printed in the console instead
+    # email. brevo key = send over https (render free blocks smtp ports),
+    # else smtp host = send over smtp, else otp and mails are printed in the console
+    brevo_api_key: str = ""
     smtp_host: str = ""
     smtp_port: int = 587
     smtp_user: str = ""

@@ -1,17 +1,48 @@
+import json
 import smtplib
+import urllib.error
+import urllib.request
 from email.message import EmailMessage
 
 from backend.app.core.config import settings
 
+BREVO_URL = "https://api.brevo.com/v3/smtp/email"
+
 
 class EmailSender:
-    """sends mail over smtp. without smtp settings it prints the mail instead (dev mode)"""
+    """sends mail with brevo (https) or smtp. with neither set it prints the mail instead (dev mode)"""
 
     def send(self, to: str, subject: str, body: str) -> None:
-        if not settings.smtp_host:
+        if settings.brevo_api_key:
+            self._send_brevo(to, subject, body)
+        elif settings.smtp_host:
+            self._send_smtp(to, subject, body)
+        else:
             print(f"[EMAIL dev] to={to} | {subject} | {body}")
-            return
 
+    def _send_brevo(self, to: str, subject: str, body: str) -> None:
+        # render free plan blocks the smtp ports, https (443) is fine
+        payload = {
+            "sender": {"name": "EchoCampus", "email": settings.smtp_from or settings.smtp_user},
+            "to": [{"email": to}],
+            "subject": subject,
+            "textContent": body,
+        }
+        req = urllib.request.Request(
+            BREVO_URL, data=json.dumps(payload).encode(), method="POST",
+            headers={"api-key": settings.brevo_api_key, "Content-Type": "application/json",
+                     "Accept": "application/json"},
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=10):
+                pass
+        except urllib.error.HTTPError as e:
+            # brevo says why in the body, e.g. sender not verified
+            print(f"[EMAIL error] to={to} | {subject} | brevo {e.code}: {e.read().decode(errors='replace')[:200]}")
+        except OSError as e:
+            print(f"[EMAIL error] to={to} | {subject} | {e}")
+
+    def _send_smtp(self, to: str, subject: str, body: str) -> None:
         msg = EmailMessage()
         msg["From"] = settings.smtp_from or settings.smtp_user
         msg["To"] = to
