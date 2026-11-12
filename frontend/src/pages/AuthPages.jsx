@@ -17,7 +17,7 @@ const POINTS = [
 ];
 
 // split screen: brand panel on the left (big screens only), the form on the right
-function AuthCard({ title, subtitle, children, footer }) {
+export function AuthCard({ title, subtitle, children, footer }) {
   return (
     <div className="flex min-h-screen">
       <aside className="relative hidden w-[44%] flex-col justify-between overflow-hidden bg-[#060a0f] p-10 text-white lg:flex">
@@ -120,7 +120,10 @@ export function LoginPage() {
             value={form.user_id} onChange={(e) => setForm({ ...form, user_id: e.target.value })} required />
         </div>
         <div>
-          <label className="label" htmlFor="pw">Password</label>
+          <div className="flex items-center justify-between">
+            <label className="label" htmlFor="pw">Password</label>
+            <Link to="/forgot" className="mb-1 text-xs font-medium text-brand-600 hover:underline dark:text-brand-400">Forgot details?</Link>
+          </div>
           <PasswordInput id="pw" autoComplete="current-password"
             value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
         </div>
@@ -265,8 +268,10 @@ export function VerifyOtpPage() {
   );
 }
 
-// shown after verifying: the new student id, big, with a copy button and a login button
-function StudentIdSaved({ studentId }) {
+// the student id, big, with a copy button. after verifying, and in forgot details
+export function StudentIdSaved({ studentId, title = "Email verified", subtitle = "Your account is ready.",
+  note = "Please save it. You need this ID and your password every time you sign in. We also sent it to your email.",
+  children }) {
   const navigate = useNavigate();
   const toast = useToast();
 
@@ -280,7 +285,7 @@ function StudentIdSaved({ studentId }) {
   }
 
   return (
-    <AuthCard title="Email verified" subtitle="Your account is ready.">
+    <AuthCard title={title} subtitle={subtitle}>
       <div className="space-y-5 text-center">
         <CheckCircle2 size={40} className="mx-auto text-brand-600 dark:text-brand-400" />
         <div className="rounded-xl border-2 border-dashed border-brand-400 bg-brand-50 px-4 py-5 dark:bg-brand-400/10">
@@ -290,13 +295,12 @@ function StudentIdSaved({ studentId }) {
             <Copy size={14} /> Copy
           </button>
         </div>
-        <p className="text-sm text-slate-600 dark:text-slate-400">
-          Please save it. You need this ID and your password every time you sign in.
-          We also sent it to your email.
-        </p>
-        <button className="btn-primary w-full" onClick={() => navigate(`/login?user=${encodeURIComponent(studentId)}`)}>
-          Let&apos;s log in now
-        </button>
+        <p className="text-sm text-slate-600 dark:text-slate-400">{note}</p>
+        {children ?? (
+          <button className="btn-primary w-full" onClick={() => navigate(`/login?user=${encodeURIComponent(studentId)}`)}>
+            Let&apos;s log in now
+          </button>
+        )}
       </div>
     </AuthCard>
   );

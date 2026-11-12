@@ -12,6 +12,7 @@ In most colleges a complaint goes into an email or a paper form, and nobody know
 
 **Students**
 - Register with email verification (6-digit code). The student ID (like `ST101`) is shown only after verifying, and is also emailed
+- Forgot details: a recovery code shows the student ID, a one-time login code signs you in when the password is forgotten (then the app asks for a new one). Each code works once, for 10 minutes
 - Raise a complaint with proof (photos, PDF, Word). Before submitting, an AI check suggests the right category and priority, and shows similar open complaints so you can back one ("I have this issue too") instead of filing a copy. Harassment, ragging and discrimination complaints stay private and are never shown to other students
 - Crisis words (self-harm, suicide) always show helpline and counsellor contacts, even if the AI is down
 - Track every complaint on a timeline, and confirm or dispute the fix when the manager marks it resolved
@@ -103,6 +104,7 @@ REDIS_URL               # empty = in-memory cache
 BREVO_API_KEY           # email over https (Brevo); needed on Render's free plan, which blocks SMTP
 SMTP_HOST  SMTP_PORT  SMTP_USER  SMTP_PASSWORD  SMTP_FROM   # or plain SMTP; all empty = emails are printed in the backend log
 EMAIL_LOGO_URL          # optional: logo image in the emails, defaults to the frontend icon
+SUPPORT_EMAIL           # optional: who students contact when stuck, defaults to SMTP_FROM
 FRONTEND_ORIGIN         # the frontend address, for CORS
 ALLOWED_EMAIL_DOMAINS   # e.g. your college domain; empty = any
 COUNSELLOR_CONTACT  CRISIS_HELPLINE

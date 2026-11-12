@@ -15,6 +15,8 @@ class EmailOtp(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     code_hash: Mapped[str] = mapped_column(String(255))
+    # verify = new account, recovery = forgot id, login = forgot password. a code only works for its own purpose
+    purpose: Mapped[str] = mapped_column(String(20), default="verify", server_default="verify")
     expires_at: Mapped[datetime]
     attempts: Mapped[int] = mapped_column(default=0)
     used: Mapped[bool] = mapped_column(default=False)

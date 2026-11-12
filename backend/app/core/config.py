@@ -37,6 +37,10 @@ class Settings(BaseSettings):
     email_logo_url: str = ""
     otp_expire_minutes: int = 10
     otp_max_attempts: int = 5
+    # forgot details: recovery + login codes one student can ask for per day, after that they contact the tech team
+    recovery_codes_per_day: int = 5
+    # who students contact when they're stuck (shown in pages and emails). empty = the sender email
+    support_email: str = ""
 
     # proof attachments
     max_upload_mb: int = 5
@@ -87,6 +91,9 @@ class Settings(BaseSettings):
             "GM103": self.gm103_password,
             "GM104": self.gm104_password,
         }
+
+    def support_contact(self) -> str:
+        return self.support_email or self.smtp_from or "the admin office"
 
     def email_domains(self) -> list[str]:
         return [d.strip().lower() for d in self.allowed_email_domains.split(",") if d.strip()]

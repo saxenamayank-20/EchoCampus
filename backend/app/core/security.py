@@ -41,10 +41,14 @@ def validate_password(password: str) -> tuple[bool, str]:
     return True, "Password is valid."
 
 
-def create_access_token(user_id: str, role: str) -> str:
-    """signed token with who you are (sub), your role and when it runs out (exp)"""
+def create_access_token(user_id: str, role: str, code_login: bool = False) -> str:
+    """signed token with who you are (sub), your role and when it runs out (exp).
+    code_login marks a sign in with an emailed login code (forgot password)"""
     expire = datetime.now(UTC) + timedelta(minutes=settings.jwt_expire_minutes)
-    return jwt.encode({"sub": user_id, "role": role, "exp": expire}, JWT_SECRET, algorithm=JWT_ALGORITHM)
+    payload = {"sub": user_id, "role": role, "exp": expire}
+    if code_login:
+        payload["code_login"] = True
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
 
 def decode_access_token(token: str) -> dict:

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import {
   BarChart3, BookOpen, CheckSquare, ChevronDown, Cpu, FilePlus2, Inbox, LayoutList, LogOut, Megaphone, Menu, MessageCircleQuestion,
-  Moon, Sun, Ticket, UserRound, Users, X,
+  KeyRound, Moon, Sun, Ticket, UserRound, Users, X,
 } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import { roleLabel } from "../lib/format";
@@ -99,6 +99,21 @@ function NavGroup({ to, label, icon: Icon, items, location, onNavigate }) {
   );
 }
 
+// after signing in with a login code: shows on every page until a new password is set
+function SetPasswordBanner() {
+  const { codeLogin } = useAuth();
+  const { pathname } = useLocation();
+  if (!codeLogin) return null;
+  return (
+    <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+      <p className="flex items-center gap-2 text-sm font-medium">
+        <KeyRound size={18} className="shrink-0" /> You signed in with a one-time code. Please set a new password now.
+      </p>
+      {pathname !== "/account" && <Link to="/account" className="btn-primary px-3 py-1.5 text-sm">Set new password</Link>}
+    </div>
+  );
+}
+
 function Sidebar({ onNavigate }) {
   const { user, logout } = useAuth();
   const [theme, toggleTheme] = useTheme();
@@ -176,6 +191,7 @@ export default function Layout() {
       )}
 
       <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-10 lg:py-8">
+        <SetPasswordBanner />
         <Outlet />
       </main>
     </div>

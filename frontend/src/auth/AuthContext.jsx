@@ -42,18 +42,34 @@ export function AuthProvider({ children }) {
     setUnauthorizedHandler(() => logout("Your session expired, please log in again."));
   }, [logout]);
 
-  const login = useCallback(async (userId, password) => {
-    const data = await api("/auth/login", { method: "POST", body: { user_id: userId, password } });
-    const next = { token: data.access_token, user: data.user };
+  const save = useCallback((next) => {
     setToken(next.token);
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(next));
     setSession(next);
-    return data.user;
   }, []);
 
+  const login = useCallback(async (userId, password) => {
+    const data = await api("/auth/login", { method: "POST", body: { user_id: userId, password } });
+    save({ token: data.access_token, user: data.user });
+    return data.user;
+  }, [save]);
+
+  // forgot password: signed in with the emailed login code, the app keeps asking for a new password
+  const loginWithCode = useCallback(async (userId, code) => {
+    const data = await api("/auth/login-code", { method: "POST", body: { user_id: userId, code } });
+    save({ token: data.access_token, user: data.user, codeLogin: true });
+    return data.user;
+  }, [save]);
+
+  // new password is set: swap in the normal token, the banner goes away
+  const passwordSet = useCallback((token) => {
+    if (token && session) save({ token, user: session.user });
+  }, [save, session]);
+
   const value = useMemo(
-    () => ({ user: session?.user ?? null, login, logout: () => logout() }),
-    [session, login, logout],
+    () => ({ user: session?.user ?? null, codeLogin: !!session?.codeLogin, login, loginWithCode, passwordSet,
+      logout: () => logout() }),
+    [session, login, loginWithCode, passwordSet, logout],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

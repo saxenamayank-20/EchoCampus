@@ -1,13 +1,18 @@
-from fastapi import APIRouter, status
+from fastapi import APIRouter, BackgroundTasks, status
 
+from backend.app.core.cache import get_cache
 from backend.app.core.config import settings
 from backend.app.core.deps import DB, CurrentUser, Sender
+from backend.app.core.enums import Role
 from backend.app.core.rate_limit import hit
 from backend.app.core.security import create_access_token
 from backend.app.models import EmailOtp
 from backend.app.schemas.user import (
     ChangePasswordIn,
+    ChangePasswordOut,
     EmailIn,
+    ForgotPasswordIn,
+    LoginCodeIn,
     LoginIn,
     MessageOut,
     RegisterIn,
@@ -17,8 +22,16 @@ from backend.app.schemas.user import (
     VerifyOtpIn,
     VerifyOut,
 )
-from backend.app.services.email_templates import welcome_email
-from backend.app.services.errors import ConflictError, EmailFailedError, NotFoundError
+from backend.app.services.email_templates import password_changed_email, welcome_email
+from backend.app.services.errors import (
+    AuthenticationError,
+    ConflictError,
+    EmailFailedError,
+    InvalidInputError,
+    NotFoundError,
+    PermissionDeniedError,
+    RateLimitError,
+)
 from backend.app.services.otp_service import OtpService
 from backend.app.services.user_service import UserService
 
@@ -75,12 +88,79 @@ def me(user: CurrentUser):
     return UserOut.of(user)
 
 
-@router.post("/change-password", response_model=MessageOut)
-def change_password(body: ChangePasswordIn, db: DB, user: CurrentUser):
+@router.post("/change-password", response_model=ChangePasswordOut)
+def change_password(body: ChangePasswordIn, db: DB, user: CurrentUser, sender: Sender, background: BackgroundTasks):
     # same limit as login, so a stolen token can't be used to guess the current password
     hit(f"pwchange:{user.user_id}", settings.rate_limit_logins_per_15_min, 15 * 60)
-    UserService(db).change_password(user, body.current_password, body.new_password)
-    return MessageOut(message="Password changed. Use the new one next time you sign in.")
+    # after a login code the email was just proven, so the old password isn't needed
+    UserService(db).change_password(user, body.current_password, body.new_password, need_current=not user.code_login)
+    subject, text, html = password_changed_email(user.name, user.email)
+    background.add_task(sender.send, user.email, subject, text, html)
+    # a login code session gets a normal token back, so the "set a new password" banner goes away
+    token = create_access_token(user.user_id, user.role.value) if user.code_login else None
+    return ChangePasswordOut(message="Password changed. Use the new one next time you sign in.", access_token=token)
+
+
+# ── forgot details (students only) ───────────────────────────────────────────
+SENT = "If a student account exists for this, we've sent a code to its email."
+STAFF = "Staff accounts can't be recovered here. Please contact the admin or the technical team."
+
+
+@router.post("/forgot/id", response_model=MessageOut)
+def forgot_id(body: EmailIn, db: DB, sender: Sender):
+    """forgot student id: a recovery code goes to that email"""
+    user = UserService(db).users.get_by_email(body.email.strip().lower())
+    _daily_limit(f"u{user.id}" if user else f"e{body.email.lower()}")
+    if user and user.role != Role.STUDENT:
+        raise PermissionDeniedError(STAFF)
+    if user and user.is_verified and not OtpService(db, sender).send(user, "recovery"):
+        raise EmailFailedError("We couldn't send the email right now. Please try again in a minute.")
+    # same answer whether the account exists or not, so nobody can check emails here
+    return MessageOut(message=SENT)
+
+
+@router.post("/forgot/id/verify", response_model=VerifyOut)
+def forgot_id_verify(body: VerifyOtpIn, db: DB):
+    """right recovery code -> the student id"""
+    user = UserService(db).users.get_by_email(body.email.strip().lower())
+    if not user or user.role != Role.STUDENT or not user.is_verified:
+        raise InvalidInputError("No active code. Ask for a new one.")
+    OtpService(db, None).verify(user, body.code, "recovery")
+    return VerifyOut(user_id=user.user_id, message="Here's your student ID.")
+
+
+@router.post("/forgot/password", response_model=MessageOut)
+def forgot_password(body: ForgotPasswordIn, db: DB, sender: Sender):
+    """forgot password: a one-time login code goes to the account's email"""
+    uid = body.user_id.strip()
+    user = UserService(db).get(uid)
+    _daily_limit(f"u{user.id}" if user else f"i{uid}")
+    if user and user.role != Role.STUDENT:
+        raise PermissionDeniedError(STAFF)
+    if user and user.is_verified and not OtpService(db, sender).send(user, "login"):
+        raise EmailFailedError("We couldn't send the email right now. Please try again in a minute.")
+    return MessageOut(message=SENT)
+
+
+@router.post("/login-code", response_model=TokenOut)
+def login_with_code(body: LoginCodeIn, db: DB):
+    """sign in with student id + login code instead of the password"""
+    uid = body.user_id.strip()
+    hit(f"login:{uid}", settings.rate_limit_logins_per_15_min, 15 * 60)
+    user = UserService(db).get(uid)
+    if not user or user.role != Role.STUDENT or not user.is_verified or not user.is_active:
+        raise AuthenticationError("Invalid student ID or code.")
+    OtpService(db, None).verify(user, body.code, "login")
+    token = create_access_token(user.user_id, user.role.value, code_login=True)
+    return TokenOut(access_token=token, expires_in=settings.jwt_expire_minutes * 60,
+                    user=UserOut.of(user), code_login=True)
+
+
+def _daily_limit(key: str) -> None:
+    """recovery + login codes per account per day. after that a human has to help"""
+    if get_cache().incr(f"rl:recover:{key}", 24 * 3600) > settings.recovery_codes_per_day:
+        raise RateLimitError(f"You've asked for too many codes today. Please contact the technical team at "
+                             f"{settings.support_contact()}.")
 
 
 def _by_email(db, email: str):

@@ -66,11 +66,12 @@ class UserService:
             raise NotVerifiedError("Please verify your email first.")
         return user
 
-    def change_password(self, user: User, current: str, new: str) -> None:
-        """needs the current password, so a left-open laptop can't be used to lock the owner out"""
-        if not verify_password(current, user.password_hash):
+    def change_password(self, user: User, current: str, new: str, need_current: bool = True) -> None:
+        """needs the current password, so a left-open laptop can't be used to lock the owner out.
+        need_current=False only right after signing in with an emailed login code"""
+        if need_current and not verify_password(current, user.password_hash):
             raise InvalidInputError("Current password is wrong.")
-        if current == new:
+        if verify_password(new, user.password_hash):
             raise InvalidInputError("The new password must be different from the current one.")
         ok, message = validate_password(new)
         if not ok:

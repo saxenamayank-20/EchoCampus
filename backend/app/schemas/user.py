@@ -38,8 +38,22 @@ class LoginIn(BaseModel):
 
 
 class ChangePasswordIn(BaseModel):
-    current_password: str
+    current_password: str = ""   # not needed after signing in with a login code
     new_password: str
+
+
+class ChangePasswordOut(BaseModel):
+    message: str
+    access_token: str | None = None   # a normal token again, after a login code session
+
+
+class ForgotPasswordIn(BaseModel):
+    user_id: str
+
+
+class LoginCodeIn(BaseModel):
+    user_id: str
+    code: str = Field(pattern=r"^\d{6}$")
 
 
 class UserOut(BaseModel):
@@ -64,6 +78,7 @@ class TokenOut(BaseModel):
     token_type: str = "bearer"
     expires_in: int   # seconds
     user: UserOut
+    code_login: bool = False   # signed in with a login code, the ui asks for a new password
 
 
 class MessageOut(BaseModel):

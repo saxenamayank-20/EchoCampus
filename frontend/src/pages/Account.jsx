@@ -21,7 +21,7 @@ function Row({ label, children }) {
 
 // your own details + change password, same page for every role
 export default function Account() {
-  const { user: saved } = useAuth();
+  const { user: saved, codeLogin, passwordSet } = useAuth();
   const toast = useToast();
   // fresh copy from the server, the saved one is from the moment you logged in
   const { data } = useQuery({ queryKey: ["me"], queryFn: () => api("/auth/me") });
@@ -47,6 +47,7 @@ export default function Account() {
       });
       toast.success(res.message);
       setForm(EMPTY);
+      passwordSet(res.access_token);   // ends a login code session
     } catch (err) {
       setError(err);
     } finally {
@@ -73,12 +74,17 @@ export default function Account() {
       </div>
 
       <form onSubmit={submit} className="card space-y-4 p-5">
-        <h2 className="flex items-center gap-2 font-semibold"><KeyRound size={18} /> Change password</h2>
-        <div>
-          <label className="label" htmlFor="pw-current">Current password</label>
-          <PasswordInput id="pw-current" autoComplete="current-password"
-            value={form.current} onChange={set("current")} required />
-        </div>
+        <h2 className="flex items-center gap-2 font-semibold"><KeyRound size={18} /> {codeLogin ? "Set a new password" : "Change password"}</h2>
+        {/* after a login code the email is already proven, so no old password here */}
+        {codeLogin ? (
+          <p className="text-sm text-slate-500">You signed in with an emailed code, so your old password isn&apos;t needed.</p>
+        ) : (
+          <div>
+            <label className="label" htmlFor="pw-current">Current password</label>
+            <PasswordInput id="pw-current" autoComplete="current-password"
+              value={form.current} onChange={set("current")} required />
+          </div>
+        )}
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label className="label" htmlFor="pw-new">New password</label>
@@ -93,7 +99,7 @@ export default function Account() {
         </div>
         <p className="text-xs text-slate-500">At least 8 characters with upper and lower case, a number and a symbol.</p>
         <ErrorBox error={error} />
-        <button className="btn-primary" disabled={busy}>{busy ? "Saving…" : "Change password"}</button>
+        <button className="btn-primary" disabled={busy}>{busy ? "Saving…" : codeLogin ? "Set new password" : "Change password"}</button>
       </form>
     </div>
   );

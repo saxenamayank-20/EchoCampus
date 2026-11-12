@@ -43,6 +43,8 @@ def get_current_user(db: DB,
     user = UserRepository(db).get_by_user_id(payload.get("sub", ""))
     if not user or not user.is_active:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Account not found.")
+    # signed in with a login code instead of the password, only lives for this token
+    user.code_login = bool(payload.get("code_login"))
     return user
 
 

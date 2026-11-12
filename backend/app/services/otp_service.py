@@ -9,6 +9,7 @@ from backend.app.core.security import hash_password, verify_password
 from backend.app.db.base import now
 from backend.app.models import EmailOtp, User
 from backend.app.services.email_service import EmailSender
+from backend.app.services.email_templates import code_email
 from backend.app.services.errors import ConflictError, InvalidInputError
 
 
@@ -17,26 +18,29 @@ class OtpService:
         self.db = db
         self.sender = sender
 
-    def send(self, user: User) -> bool:
-        """new 6 digit code, old unused ones stop working. False if the mail didn't go out"""
-        if user.is_verified:
+    def send(self, user: User, purpose: str = "verify") -> bool:
+        """new 6 digit code for this purpose, older unused ones of the same purpose stop working.
+        False if the mail didn't go out"""
+        if purpose == "verify" and user.is_verified:
             raise ConflictError("This account is already verified.")
-        self.db.execute(update(EmailOtp).where(EmailOtp.user_id == user.id, EmailOtp.used.is_(False))
-                        .values(used=True))
+        self.db.execute(update(EmailOtp).where(EmailOtp.user_id == user.id, EmailOtp.purpose == purpose,
+                                               EmailOtp.used.is_(False)).values(used=True))
 
         code = f"{secrets.randbelow(1_000_000):06d}"
-        self.db.add(EmailOtp(user_id=user.id, code_hash=hash_password(code),
+        self.db.add(EmailOtp(user_id=user.id, code_hash=hash_password(code), purpose=purpose,
                              expires_at=now() + timedelta(minutes=settings.otp_expire_minutes)))
         self.db.commit()
-        sent = self.sender.send(user.email, "Your EchoCampus verification code",
-                                f"Your code is {code}. It expires in {settings.otp_expire_minutes} minutes.")
+        subject, text, html = code_email(purpose, user.name, code, user.email)
+        sent = self.sender.send(user.email, subject, text, html)
         return sent is not False   # the test mailbox returns None
 
-    def verify(self, user: User, code: str) -> None:
-        if user.is_verified:
+    def verify(self, user: User, code: str, purpose: str = "verify") -> None:
+        """right code -> it's used up. wrong -> counts a try"""
+        if purpose == "verify" and user.is_verified:
             return
         otp = self.db.scalar(select(EmailOtp)
-                             .where(EmailOtp.user_id == user.id, EmailOtp.used.is_(False))
+                             .where(EmailOtp.user_id == user.id, EmailOtp.purpose == purpose,
+                                    EmailOtp.used.is_(False))
                              .order_by(EmailOtp.id.desc()))
         if not otp:
             raise InvalidInputError("No active code. Ask for a new one.")
@@ -51,6 +55,7 @@ class OtpService:
             left = settings.otp_max_attempts - otp.attempts
             raise InvalidInputError(f"Wrong code. {left} tries left.")
 
-        otp.used = True
-        user.is_verified = True
+        otp.used = True       # one time only
+        if purpose == "verify":
+            user.is_verified = True
         self.db.commit()

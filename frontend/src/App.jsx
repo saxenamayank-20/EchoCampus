@@ -16,6 +16,7 @@ import AiUsage from "./pages/admin/AiUsage";
 import TicketDetail from "./pages/TicketDetail";
 import Account from "./pages/Account";
 import Landing from "./pages/Landing";
+import { ForgotPage, LoginCodePage } from "./pages/ForgotDetails";
 
 // charts library is big, only load it when the admin opens the overview
 const Overview = lazy(() => import("./pages/admin/Overview"));
@@ -33,6 +34,8 @@ export default function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/verify" element={<VerifyOtpPage />} />
+      <Route path="/forgot" element={<ForgotPage />} />
+      <Route path="/login-code" element={<LoginCodePage />} />
 
       {/* everything below needs a login, each group also needs the right role */}
       <Route element={<RequireRole />}>

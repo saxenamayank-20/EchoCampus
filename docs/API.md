@@ -11,7 +11,11 @@ Every route except login/register/health needs `Authorization: Bearer <token>`. 
 | Method | Route | What it does |
 |---|---|---|
 | POST | `/auth/login` | log in with user ID + password, returns a 30 min JWT |
-| POST | `/auth/change-password` | change your own password (needs the current one, same rules as register) |
+| POST | `/auth/change-password` | change your own password (needs the current one, not after a login code sign in). a "password changed" email goes out |
+| POST | `/auth/forgot/id` | forgot student id: a recovery code goes to that email (students only, max 5 codes a day) |
+| POST | `/auth/forgot/id/verify` | right recovery code -> the student id |
+| POST | `/auth/forgot/password` | forgot password: a one-time login code goes to the student's email |
+| POST | `/auth/login-code` | sign in with student id + login code, then the app asks for a new password |
 | GET | `/auth/me` | the logged-in user |
 | POST | `/auth/register` | creates an unverified student and emails a 6 digit code. the student id comes after verifying |
 | POST | `/auth/resend-otp` | send a new 6 digit code to that email (old ones stop working) |
