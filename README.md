@@ -2,7 +2,7 @@
 
 A college grievance portal I built so students can raise complaints, see who is handling them, and get them actually fixed, with AI that sorts complaints, spots duplicates, answers rule questions from the student handbook and writes a weekly report for the admin.
 
-![AI check before submitting a complaint](docs/screenshots/ai-check.png)
+![EchoCampus landing page](docs/screenshots/landing-light.png)
 
 ## Why I built it
 
@@ -33,7 +33,8 @@ In most colleges a complaint goes into an email or a paper form, and nobody know
 - A "My account" page for every role: your details, and a password change that asks for the current password first
 - JWT login, role checks on every route, rate limits (5 complaints per hour, 10 login tries per 15 minutes for each user ID)
 - SLA deadlines by priority, and a job every 15 minutes that escalates overdue complaints
-- In-app notifications (bell) and email for status changes
+- In-app notifications (bell) and email for status changes. Emails (codes, welcome with the student ID, password changed) are HTML with the logo, sent over HTTPS through Brevo
+- A public landing page for visitors, and split-screen sign in pages with a campus photo
 - Light and dark mode, and the site can be installed as an app from the browser (it has its own icon)
 - Submitting and closing run as LangGraph graphs. Closing pauses for the student and then the admin, and the paused state is saved in Postgres, so it survives a restart
 
@@ -41,9 +42,11 @@ In most colleges a complaint goes into an email or a paper form, and nobody know
 
 | | |
 |---|---|
+| ![Landing page in dark mode](docs/screenshots/landing-dark.png) Landing page (dark mode) | ![Sign in page with the campus photo, dark mode](docs/screenshots/login-dark.png) Sign in (dark mode) |
+| ![AI check before submitting a complaint](docs/screenshots/ai-check.png) AI check before submitting | ![Forgot details: forgot ID, password or both](docs/screenshots/forgot-details.png) Forgot details |
 | ![Policy assistant answering from the handbook with the page](docs/screenshots/policy-assistant.png) Policy assistant | ![Admin dashboard in dark mode](docs/screenshots/admin-dashboard-dark.png) Admin dashboard (dark mode) |
 | ![Ticket page with the status steps and timeline](docs/screenshots/ticket-timeline.png) Ticket timeline | ![Manager summary page with boxes and the Active / Resolved menu](docs/screenshots/manager-queue.png) Manager's summary |
-| ![My account page with details and change password](docs/screenshots/my-account.png) My account | |
+| ![My account page with details and change password](docs/screenshots/my-account.png) My account | ![Welcome email with the student ID](docs/screenshots/welcome-email.png) Welcome email |
 
 ## Tech stack
 
@@ -83,7 +86,7 @@ flowchart LR
 
 ## Run it locally
 
-**You need:** Python 3.12, [uv](https://docs.astral.sh/uv/), Node.js 18+, git. For the full setup: a free Neon database, a free Gemini API key (Google AI Studio), optionally a free Upstash Redis database and a Gmail app password for real emails.
+**You need:** Python 3.12, [uv](https://docs.astral.sh/uv/), Node.js 18+, git. For the full setup: a free Neon database, a free Gemini API key (Google AI Studio), optionally a free Upstash Redis database and a free Brevo API key (or a Gmail app password) for real emails.
 
 ```bash
 git clone https://github.com/saxenamayank-20/EchoCampus.git
