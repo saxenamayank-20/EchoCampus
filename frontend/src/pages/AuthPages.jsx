@@ -5,6 +5,7 @@ import { api } from "../api/client";
 import { homeFor, useAuth } from "../auth/AuthContext";
 import { ErrorBox } from "../components/Feedback";
 import { useToast } from "../components/Toast";
+import campusPhoto from "../assets/campus.webp";
 import PasswordInput from "../components/PasswordInput";
 
 const DEPARTMENTS = ["Computer Science", "Information Technology", "Electronics", "Mechanical", "Civil",
@@ -20,8 +21,8 @@ const POINTS = [
 export function AuthCard({ title, subtitle, children, footer }) {
   return (
     <div className="flex min-h-screen">
-      <aside className="relative hidden w-[44%] flex-col justify-between overflow-hidden bg-[#060a0f] p-10 text-white lg:flex">
-        <div aria-hidden className="pointer-events-none absolute -left-32 -top-32 h-[28rem] w-[28rem] rounded-full bg-brand-400/20 blur-3xl" />
+      <aside className="relative hidden w-[44%] flex-col justify-between overflow-hidden bg-[#07090c] px-12 py-10 text-white lg:flex xl:px-20">
+        <div aria-hidden className="pointer-events-none absolute -left-32 -top-32 h-[28rem] w-[28rem] rounded-full bg-brand-400/15 blur-3xl" />
         <div aria-hidden className="pointer-events-none absolute -bottom-40 -right-24 h-[26rem] w-[26rem] rounded-full bg-lime-500/10 blur-3xl" />
         <Link to="/" className="relative flex items-center gap-2.5">
           <img src="/favicon.svg" alt="" className="h-9 w-9" />
@@ -59,18 +60,23 @@ export function AuthCard({ title, subtitle, children, footer }) {
         <span />
       </aside>
 
-      <div className="relative flex flex-1 items-center justify-center px-4 py-16">
-        <Link to="/" className="absolute left-4 top-5 inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 dark:hover:text-white sm:left-6">
+      {/* dark mode: same near-black as the left panel, solid card and inputs (no navy) */}
+      <div className="relative flex flex-1 items-center justify-center overflow-hidden px-4 py-16 dark:bg-[#0a0d10]
+        dark:[&_.card]:border-white/10 dark:[&_.card]:bg-[#111418] dark:[&_.input]:border-white/10 dark:[&_.input]:bg-[#0c0f12]">
+        {/* campus photo, faded by the overlay so the form stays readable */}
+        <img src={campusPhoto} alt="" aria-hidden className="pointer-events-none absolute inset-0 h-full w-full object-cover object-[center_bottom]" />
+        <div aria-hidden className="pointer-events-none absolute inset-0 bg-white/[0.85] dark:bg-[#0a0d10]/[0.85]" />
+        <Link to="/" className="absolute left-4 top-5 z-10 inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white sm:left-6">
           <ArrowLeft size={16} /> Back to home
         </Link>
-        <div className="w-full max-w-md">
+        <div className="relative w-full max-w-[400px]">
           <div className="mb-6 flex flex-col items-center text-center">
             <Link to="/" aria-label="EchoCampus home"><img src="/favicon.svg" alt="" className="mb-3 h-11 w-11 lg:hidden" /></Link>
             <h1 className="text-2xl font-semibold">{title}</h1>
-            {subtitle && <p className="mt-1 text-sm text-slate-500">{subtitle}</p>}
+            {subtitle && <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{subtitle}</p>}
           </div>
           <div className="card p-6">{children}</div>
-          {footer && <p className="mt-4 text-center text-sm text-slate-500">{footer}</p>}
+          {footer && <p className="mt-4 text-center text-sm text-slate-600 dark:text-slate-400">{footer}</p>}
         </div>
       </div>
     </div>
