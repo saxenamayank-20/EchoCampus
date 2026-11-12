@@ -13,9 +13,9 @@ Every route except login/register/health needs `Authorization: Bearer <token>`. 
 | POST | `/auth/login` | log in with user ID + password, returns a 30 min JWT |
 | POST | `/auth/change-password` | change your own password (needs the current one, same rules as register) |
 | GET | `/auth/me` | the logged-in user |
-| POST | `/auth/register` | creates an unverified student and emails a 6 digit code |
-| POST | `/auth/resend-otp` | send a new 6 digit code (old ones stop working) |
-| POST | `/auth/verify-otp` | check the email code, then the student can log in |
+| POST | `/auth/register` | creates an unverified student and emails a 6 digit code. the student id comes after verifying |
+| POST | `/auth/resend-otp` | send a new 6 digit code to that email (old ones stop working) |
+| POST | `/auth/verify-otp` | check the email + code, returns the new student id (also mailed), then the student can log in |
 
 ## Complaints
 
@@ -26,7 +26,7 @@ Every route except login/register/health needs `Authorization: Bearer <token>`. 
 | POST | `/complaints/preview` | before submit: ai category + priority, crisis help, and similar open complaints |
 | GET | `/complaints/priority-preview` | live hint on the new complaint form |
 | GET | `/complaints/supporting` | complaints this student said "I have this issue too" on |
-| GET | `/complaints/{ticket_id}` | one complaint (owner, supporter, assigned manager or admin) |
+| GET | `/complaints/{ticket_id}` | one complaint (owner, supporter, assigned manager or admin). supporters don't see who filed it, staff see the supporters list |
 | POST | `/complaints/{ticket_id}/confirm` | student answers: fixed (with an optional 1-5 rating) or not fixed (reason needed) |
 | POST | `/complaints/{ticket_id}/support` | "I have this issue too" |
 | POST | `/complaints/{ticket_id}/supporter-comment` | a supporter says it's still a problem for them |

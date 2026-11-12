@@ -14,7 +14,12 @@ from backend.app.ai.llm_client import DisabledClient, LLMClient
 from backend.app.ai.triage import Triage, triage
 from backend.app.core.cache import get_cache
 from backend.app.core.config import settings
-from backend.app.core.constants import CATEGORIES, MANAGER_MEET_LINKS
+from backend.app.core.constants import (
+    CATEGORIES,
+    CATEGORY_MIN_PRIORITY,
+    MANAGER_MEET_LINKS,
+    SENSITIVE_CATEGORIES,
+)
 from backend.app.core.enums import Priority, Role, Status
 from backend.app.core.rate_limit import hit
 from backend.app.db.base import now
@@ -131,6 +136,8 @@ class ComplaintService:
         complaint = self._get(ticket_id)
         if complaint.student_id == student.id:
             raise ConflictError("This is your own complaint.")
+        if complaint.category in SENSITIVE_CATEGORIES:
+            raise PermissionDeniedError("This complaint is private. Please raise your own, it goes to the same person.")
         if complaint.status in (Status.RESOLVED, Status.CLOSED) or complaint.duplicate_of:
             raise InvalidTransitionError("This complaint is no longer open.")
         if any(s.student_id == student.id for s in complaint.supporters):
@@ -171,6 +178,10 @@ class ComplaintService:
             new = Priority(priority)
         except ValueError:
             raise InvalidInputError(f"Unknown priority: {priority}") from None
+        floor = CATEGORY_MIN_PRIORITY.get(complaint.category)
+        order = [Priority.LOW, Priority.MEDIUM, Priority.HIGH, Priority.CRITICAL]
+        if floor and order.index(new) < order.index(floor):
+            raise InvalidInputError(f"{complaint.category} complaints are always at least {floor.value}.")
         old = complaint.priority
         if new == old:
             return complaint

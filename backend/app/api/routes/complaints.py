@@ -4,7 +4,7 @@ from typing import Annotated
 from fastapi import APIRouter, Query, status
 
 from backend.app.core.deps import DB, LLM, CurrentUser, Student
-from backend.app.core.enums import Priority, Status
+from backend.app.core.enums import Priority, Role, Status
 from backend.app.repositories.complaint_repository import ComplaintFilters
 from backend.app.schemas.complaint import (
     ComplaintIn,
@@ -50,7 +50,7 @@ def list_complaints(
                                date_from=date_from, date_to=date_to, search=q,
                                close_requested=close_requested, escalated=escalated)
     items, total = ComplaintService(db).search(user, filters, page, page_size)
-    return Page(items=[ComplaintOut.of(c) for c in items], total=total, page=page, page_size=page_size)
+    return Page(items=[ComplaintOut.of(c, user) for c in items], total=total, page=page, page_size=page_size)
 
 
 @router.post("/preview", response_model=PreviewOut)
@@ -69,7 +69,7 @@ def preview(body: PreviewIn, db: DB, student: Student, llm: LLM):
 @router.get("/supporting", response_model=list[ComplaintOut])
 def supporting(db: DB, student: Student):
     """complaints this student said "I have this issue too" on"""
-    return [ComplaintOut.of(c) for c in ComplaintService(db).supported_by(student)]
+    return [ComplaintOut.of(c, student) for c in ComplaintService(db).supported_by(student)]
 
 
 @router.get("/priority-preview", response_model=PriorityPreviewOut)
@@ -80,13 +80,18 @@ def priority_preview(_: Student, title: str = "", description: str = "", categor
 
 @router.get("/{ticket_id}", response_model=ComplaintOut)
 def get_one(ticket_id: str, db: DB, user: CurrentUser):
-    return ComplaintOut.of(ComplaintService(db).get_for(user, ticket_id))
+    return ComplaintOut.of(ComplaintService(db).get_for(user, ticket_id), user)
 
 
 @router.get("/{ticket_id}/timeline", response_model=list[HistoryOut])
 def timeline(ticket_id: str, db: DB, user: CurrentUser):
     complaint = ComplaintService(db).get_for(user, ticket_id)
-    return [HistoryOut.of(h) for h in complaint.history]
+    items = [HistoryOut.of(h) for h in complaint.history]
+    if user.role == Role.STUDENT and user.id != complaint.student_id:
+        # supporter: hide who filed it
+        owner = complaint.student.user_id
+        items = [h.model_copy(update={"changed_by": "student"}) if h.changed_by == owner else h for h in items]
+    return items
 
 
 @router.post("/{ticket_id}/confirm", response_model=ComplaintOut)
@@ -98,7 +103,7 @@ def confirm(ticket_id: str, body: ConfirmIn, db: DB, student: Student):
 
 @router.post("/{ticket_id}/support", response_model=ComplaintOut)
 def support(ticket_id: str, db: DB, student: Student):
-    return ComplaintOut.of(ComplaintService(db).support(ticket_id, student))
+    return ComplaintOut.of(ComplaintService(db).support(ticket_id, student), student)
 
 
 @router.post("/{ticket_id}/supporter-comment", response_model=MessageOut)

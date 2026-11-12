@@ -12,15 +12,16 @@ BREVO_URL = "https://api.brevo.com/v3/smtp/email"
 class EmailSender:
     """sends mail with brevo (https) or smtp. with neither set it prints the mail instead (dev mode)"""
 
-    def send(self, to: str, subject: str, body: str) -> None:
+    def send(self, to: str, subject: str, body: str) -> bool:
+        """False when the mail couldn't go out (the reason is in the log)"""
         if settings.brevo_api_key:
-            self._send_brevo(to, subject, body)
-        elif settings.smtp_host:
-            self._send_smtp(to, subject, body)
-        else:
-            print(f"[EMAIL dev] to={to} | {subject} | {body}")
+            return self._send_brevo(to, subject, body)
+        if settings.smtp_host:
+            return self._send_smtp(to, subject, body)
+        print(f"[EMAIL dev] to={to} | {subject} | {body}")
+        return True
 
-    def _send_brevo(self, to: str, subject: str, body: str) -> None:
+    def _send_brevo(self, to: str, subject: str, body: str) -> bool:
         # render free plan blocks the smtp ports, https (443) is fine
         payload = {
             "sender": {"name": "EchoCampus", "email": settings.smtp_from or settings.smtp_user},
@@ -35,14 +36,15 @@ class EmailSender:
         )
         try:
             with urllib.request.urlopen(req, timeout=10):
-                pass
+                return True
         except urllib.error.HTTPError as e:
             # brevo says why in the body, e.g. sender not verified
             print(f"[EMAIL error] to={to} | {subject} | brevo {e.code}: {e.read().decode(errors='replace')[:200]}")
         except OSError as e:
             print(f"[EMAIL error] to={to} | {subject} | {e}")
+        return False
 
-    def _send_smtp(self, to: str, subject: str, body: str) -> None:
+    def _send_smtp(self, to: str, subject: str, body: str) -> bool:
         msg = EmailMessage()
         msg["From"] = settings.smtp_from or settings.smtp_user
         msg["To"] = to
@@ -53,9 +55,11 @@ class EmailSender:
                 server.starttls()
                 server.login(settings.smtp_user, settings.smtp_password)
                 server.send_message(msg)
+            return True
         except (smtplib.SMTPException, OSError) as e:
             # a failed mail shouldn't break the request, just log it
             print(f"[EMAIL error] to={to} | {subject} | {e}")
+            return False
 
 
 def status_change_mail(sender: EmailSender, to: str, ticket_id: str, status: str, remark: str | None) -> None:

@@ -337,7 +337,8 @@ export default function TicketDetail() {
           <Section title="Details">
             <dl className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
               <Info label="Category">{c.category}</Info>
-              <Info label="Student">{c.student_name} ({c.student_id})</Info>
+              {/* supporters get "Another student" with no id */}
+              <Info label="Student">{c.student_id ? `${c.student_name} (${c.student_id})` : c.student_name}</Info>
               <Info label="Department">{c.student_dept ?? "—"}</Info>
               <Info label="Manager">{c.manager_name ?? "Not assigned yet"}</Info>
               <Info label="Filed">{formatDate(c.created_at)}</Info>
@@ -370,6 +371,19 @@ export default function TicketDetail() {
               </div>
             )}
             <p className="whitespace-pre-wrap rounded-lg bg-slate-50 p-3 text-sm dark:bg-slate-800/60">{c.description}</p>
+            {c.supporters?.length > 0 && (
+              <div className="mt-3">
+                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">Also affected ({c.supporters.length})</p>
+                <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200 text-sm dark:divide-slate-800 dark:border-slate-800">
+                  {c.supporters.map((s) => (
+                    <li key={s.user_id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
+                      <span><b className="font-medium">{s.name}</b> <span className="text-slate-500">({s.user_id}{s.department ? `, ${s.department}` : ""})</span></span>
+                      <span className="text-xs text-slate-500">joined {formatDate(s.since)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             {c.student_remarks && <p className="mt-3 text-sm text-slate-500">Student remarks: {c.student_remarks}</p>}
             {c.manager_remarks && (
               <p className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-200">
@@ -386,9 +400,12 @@ export default function TicketDetail() {
           {isAssigned && <ManagerPanel key={`${c.status}-${c.priority}`} complaint={c} />}
           {user.role === "admin" && <AdminPanel complaint={c} />}
 
-          <Section title="Proof">
-            <Attachments ticketId={c.ticket_id} canUpload={(isOwner || isAssigned) && c.status !== "Closed"} />
-          </Section>
+          {/* proof files stay private to the student who filed it */}
+          {!isSupporter && (
+            <Section title="Proof">
+              <Attachments ticketId={c.ticket_id} canUpload={(isOwner || isAssigned) && c.status !== "Closed"} />
+            </Section>
+          )}
         </div>
 
         <Section title="Timeline" className="h-fit">

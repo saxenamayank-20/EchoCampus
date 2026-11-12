@@ -3,8 +3,8 @@ from typing import Generic, TypeVar
 
 from pydantic import BaseModel, Field
 
-from backend.app.core.enums import Priority, Status
-from backend.app.models import Complaint, ComplaintHistory, ManagerUpdate
+from backend.app.core.enums import Priority, Role, Status
+from backend.app.models import Complaint, ComplaintHistory, ManagerUpdate, User
 
 T = TypeVar("T")
 
@@ -35,6 +35,13 @@ class ConfirmationOut(BaseModel):
     admin_note: str | None
 
 
+class SupporterOut(BaseModel):
+    user_id: str
+    name: str
+    department: str | None
+    since: datetime
+
+
 class ComplaintOut(BaseModel):
     ticket_id: str
     title: str
@@ -60,11 +67,12 @@ class ComplaintOut(BaseModel):
     confirmation: ConfirmationOut | None    # latest close-request round
     ai_summary: str | None
     supporters_count: int                    # other students with the same issue
+    supporters: list[SupporterOut] = []      # only filled for the manager and admin
     duplicate_of: str | None                 # ticket id it was merged into
 
     @classmethod
-    def of(cls, c: Complaint) -> "ComplaintOut":
-        return cls(
+    def of(cls, c: Complaint, viewer: User | None = None) -> "ComplaintOut":
+        out = cls(
             ticket_id=c.ticket_id, title=c.title, description=c.description, category=c.category,
             priority=c.priority, priority_source=c.priority_source, status=c.status,
             student_id=c.student.user_id, student_name=c.student.name, student_dept=c.student.department,
@@ -76,6 +84,16 @@ class ComplaintOut(BaseModel):
             sla_due_at=c.sla_due_at, escalated=c.escalated, confirmation=_confirmation(c),
             ai_summary=c.ai_summary, supporters_count=len(c.supporters),
             duplicate_of=c.original.ticket_id if c.original else None)
+        if viewer is None:
+            return out
+        if viewer.role in (Role.MANAGER, Role.ADMIN):
+            out.supporters = [SupporterOut(user_id=s.student.user_id, name=s.student.name,
+                                           department=s.student.department, since=s.created_at)
+                              for s in c.supporters]
+        elif viewer.id != c.student_id:
+            # a supporter only shares the issue, they don't get to know who filed it
+            out.student_id, out.student_name, out.student_dept, out.student_remarks = "", "Another student", None, None
+        return out
 
 
 def _confirmation(c: Complaint) -> ConfirmationOut | None:

@@ -27,7 +27,7 @@ class AttachmentService:
     def upload(self, ticket_id: str, uploader: User, filename: str, data: bytes) -> Attachment:
         # get_for already blocks anyone who can't see the complaint
         complaint = self.complaints.get_for(uploader, ticket_id)
-        if uploader.role == Role.ADMIN:
+        if uploader.role == Role.ADMIN or _is_supporter(uploader, complaint):
             raise PermissionDeniedError("Only the student and the assigned manager can add proof.")
         if complaint.status == Status.CLOSED:
             raise InvalidInputError("This complaint is closed.")
@@ -56,6 +56,8 @@ class AttachmentService:
 
     def list_for(self, viewer: User, ticket_id: str) -> list[Attachment]:
         complaint = self.complaints.get_for(viewer, ticket_id)
+        if _is_supporter(viewer, complaint):
+            return []   # proof files stay with the student who filed it
         return list(self.db.scalars(select(Attachment).where(Attachment.complaint_id == complaint.id)
                                     .order_by(Attachment.id)))
 
@@ -65,6 +67,8 @@ class AttachmentService:
             raise NotFoundError("File not found.")
         # same rule as the complaint: owner student, assigned manager or admin
         self.complaints.get_for(viewer, attachment.complaint.ticket_id)
+        if _is_supporter(viewer, attachment.complaint):
+            raise PermissionDeniedError("Only the student who filed it can open these files.")
         data = self.storage.read(attachment.stored_name)
         if data is None:
             raise NotFoundError("File is missing from storage.")
@@ -75,3 +79,8 @@ def _clean_name(filename: str | None) -> str:
     """drop any folder part like ../../etc, keep just the name for display"""
     name = Path(filename or "file").name.strip() or "file"
     return name[:200]
+
+
+def _is_supporter(user: User, complaint) -> bool:
+    """a student who backed the complaint but didn't file it"""
+    return user.role == Role.STUDENT and user.id != complaint.student_id

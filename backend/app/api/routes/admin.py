@@ -57,7 +57,7 @@ def close(ticket_id: str, body: AdminCloseIn, db: DB, admin: Admin,
     complaint = ComplaintService(db).admin_close(ticket_id, admin, force=body.force, reason=body.reason)
     background.add_task(status_change_mail, sender, complaint.student.email,
                         complaint.ticket_id, complaint.status.value, None)
-    return ComplaintOut.of(complaint)
+    return ComplaintOut.of(complaint, admin)
 
 
 @router.post("/complaints/{ticket_id}/message", response_model=MessageOut)
@@ -75,7 +75,7 @@ def quality(db: DB, _: Admin):
 @router.post("/complaints/{ticket_id}/merge", response_model=ComplaintOut)
 def merge(ticket_id: str, body: MergeIn, db: DB, admin: Admin):
     """ticket_id is a duplicate: close it and add its student as a supporter of `into`"""
-    return ComplaintOut.of(ComplaintService(db).merge(ticket_id, body.into.strip(), admin))
+    return ComplaintOut.of(ComplaintService(db).merge(ticket_id, body.into.strip(), admin), admin)
 
 
 @router.get("/complaints/{ticket_id}/closure-state")

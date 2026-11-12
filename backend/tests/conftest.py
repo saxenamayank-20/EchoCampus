@@ -113,9 +113,9 @@ def make_student(client, mailbox, email="student1@college.edu") -> tuple[str, di
     r = client.post("/auth/register", json={"name": "Priya", "email": email,
                                             "password": STUDENT_PASSWORD, "department": "MBA"})
     assert r.status_code == 201, r.text
-    uid = r.json()["user_id"]
-    r = client.post("/auth/verify-otp", json={"user_id": uid, "code": mailbox.last_code()})
+    r = client.post("/auth/verify-otp", json={"email": email, "code": mailbox.last_code()})
     assert r.status_code == 200, r.text
+    uid = r.json()["user_id"]
     return uid, login(client, uid, STUDENT_PASSWORD)
 
 

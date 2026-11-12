@@ -28,7 +28,7 @@ def update_status(ticket_id: str, body: StatusUpdateIn, db: DB, manager: Manager
     # the mail goes out after the response, so the manager doesn't wait for smtp
     background.add_task(status_change_mail, sender, complaint.student.email,
                         complaint.ticket_id, complaint.status.value, complaint.manager_remarks)
-    return ComplaintOut.of(complaint)
+    return ComplaintOut.of(complaint, manager)
 
 
 @router.post("/{ticket_id}/close-request", response_model=ComplaintOut)
@@ -42,7 +42,7 @@ def request_close(ticket_id: str, body: CloseRequestIn, db: DB, manager: Manager
                         f"Manager's note: {body.note}\n\nWas it really fixed? Log in to answer within "
                         f"{settings.confirmation_window_days} days: "
                         f"{settings.frontend_origin}/tickets/{complaint.ticket_id}")
-    return ComplaintOut.of(complaint)
+    return ComplaintOut.of(complaint, manager)
 
 
 @router.post("/{ticket_id}/updates", response_model=MessageOut, status_code=status.HTTP_201_CREATED)
@@ -54,7 +54,7 @@ def post_update(ticket_id: str, body: ManagerUpdateIn, db: DB, manager: Manager)
 @router.post("/{ticket_id}/priority", response_model=ComplaintOut)
 def set_priority(ticket_id: str, body: PriorityIn, db: DB, manager: Manager):
     """manager overrides the ai/keyword priority (saved as 'manual')"""
-    return ComplaintOut.of(ComplaintService(db).override_priority(ticket_id, manager, body.priority))
+    return ComplaintOut.of(ComplaintService(db).override_priority(ticket_id, manager, body.priority), manager)
 
 
 @router.post("/{ticket_id}/reply-suggestion")

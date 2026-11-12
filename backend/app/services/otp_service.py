@@ -17,8 +17,8 @@ class OtpService:
         self.db = db
         self.sender = sender
 
-    def send(self, user: User) -> None:
-        """new 6 digit code, old unused ones stop working"""
+    def send(self, user: User) -> bool:
+        """new 6 digit code, old unused ones stop working. False if the mail didn't go out"""
         if user.is_verified:
             raise ConflictError("This account is already verified.")
         self.db.execute(update(EmailOtp).where(EmailOtp.user_id == user.id, EmailOtp.used.is_(False))
@@ -28,8 +28,9 @@ class OtpService:
         self.db.add(EmailOtp(user_id=user.id, code_hash=hash_password(code),
                              expires_at=now() + timedelta(minutes=settings.otp_expire_minutes)))
         self.db.commit()
-        self.sender.send(user.email, "Your EchoCampus verification code",
-                         f"Your code is {code}. It expires in {settings.otp_expire_minutes} minutes.")
+        sent = self.sender.send(user.email, "Your EchoCampus verification code",
+                                f"Your code is {code}. It expires in {settings.otp_expire_minutes} minutes.")
+        return sent is not False   # the test mailbox returns None
 
     def verify(self, user: User, code: str) -> None:
         if user.is_verified:

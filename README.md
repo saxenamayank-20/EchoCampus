@@ -11,15 +11,15 @@ In most colleges a complaint goes into an email or a paper form, and nobody know
 ## Features
 
 **Students**
-- Register with email verification (6-digit code), log in with a short ID like `ST101`
-- Raise a complaint with proof (photos, PDF, Word). Before submitting, an AI check suggests the right category and priority, and shows similar open complaints so you can back one ("I have this issue too") instead of filing a copy
+- Register with email verification (6-digit code). The student ID (like `ST101`) is shown only after verifying, and is also emailed
+- Raise a complaint with proof (photos, PDF, Word). Before submitting, an AI check suggests the right category and priority, and shows similar open complaints so you can back one ("I have this issue too") instead of filing a copy. Harassment, ragging and discrimination complaints stay private and are never shown to other students
 - Crisis words (self-harm, suicide) always show helpline and counsellor contacts, even if the AI is down
 - Track every complaint on a timeline, and confirm or dispute the fix when the manager marks it resolved
 - Ask the policy assistant questions about rules, fees and timings. It answers only from the student handbook and shows the page
 
 **Grievance managers**
 - See only the complaints of their own categories: a summary page with boxes (Critical, High, escalated, per category…) where each box opens just those complaints, and Active / Resolved lists in the sidebar, with filters and paging
-- Move complaints through Assigned → In Progress → Resolved (wrong moves are blocked), change the priority, post updates to the admin
+- Move complaints through Assigned → In Progress → Resolved (wrong moves are blocked), change the priority (never below Critical for harassment, ragging and discrimination), see which students backed a complaint, post updates to the admin
 - Get an AI-drafted reply based on how similar complaints were fixed before (a draft only, nothing is sent automatically)
 
 **Admin**

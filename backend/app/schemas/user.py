@@ -13,17 +13,23 @@ class RegisterIn(BaseModel):
 
 
 class RegisterOut(BaseModel):
-    user_id: str
+    # no student id here, it's shown only after the email is verified
+    email: str
     message: str
 
 
 class VerifyOtpIn(BaseModel):
-    user_id: str
+    email: EmailStr
     code: str = Field(pattern=r"^\d{6}$")
 
 
-class UserIdIn(BaseModel):
+class EmailIn(BaseModel):
+    email: EmailStr
+
+
+class VerifyOut(BaseModel):
     user_id: str
+    message: str
 
 
 class LoginIn(BaseModel):

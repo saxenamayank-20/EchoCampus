@@ -11,49 +11,52 @@ NEW = {"name": "Riya", "email": "riya@college.edu", "password": STUDENT_PASSWORD
 def test_register_sends_otp_and_blocks_login_until_verified(client, mailbox):
     r = client.post("/auth/register", json=NEW)
     assert r.status_code == 201
-    uid = r.json()["user_id"]
-    assert uid == "ST101"
+    assert "user_id" not in r.json()          # the id is only shown after verifying
     assert mailbox.sent[-1][0] == "riya@college.edu"
 
-    r = client.post("/auth/login", json={"user_id": uid, "password": STUDENT_PASSWORD})
+    r = client.post("/auth/login", json={"user_id": "ST101", "password": STUDENT_PASSWORD})
     assert r.status_code == 403
     assert r.json()["error"]["code"] == "not_verified"
 
-    r = client.post("/auth/verify-otp", json={"user_id": uid, "code": mailbox.last_code()})
+    r = client.post("/auth/verify-otp", json={"email": NEW["email"], "code": mailbox.last_code()})
     assert r.status_code == 200
+    uid = r.json()["user_id"]
+    assert uid == "ST101"
+    # the id is also mailed to them
+    assert mailbox.sent[-1][0] == NEW["email"] and "ST101" in mailbox.sent[-1][2]
     me = client.get("/auth/me", headers=login(client, uid, STUDENT_PASSWORD)).json()
     assert me["role"] == "student" and me["is_verified"]
 
 
 def test_wrong_otp_counts_attempts_then_locks(client, mailbox):
-    uid = client.post("/auth/register", json=NEW).json()["user_id"]
+    client.post("/auth/register", json=NEW)
     right = mailbox.last_code()
     wrong = "000000" if right != "000000" else "111111"
     for _ in range(settings.otp_max_attempts):
-        assert client.post("/auth/verify-otp", json={"user_id": uid, "code": wrong}).status_code == 422
+        assert client.post("/auth/verify-otp", json={"email": NEW["email"], "code": wrong}).status_code == 422
     # even the right code is refused now, a new one is needed
-    r = client.post("/auth/verify-otp", json={"user_id": uid, "code": right})
+    r = client.post("/auth/verify-otp", json={"email": NEW["email"], "code": right})
     assert r.status_code == 422 and "new code" in r.json()["error"]["message"]
 
 
 def test_expired_otp(client, mailbox, seeded_db):
-    uid = client.post("/auth/register", json=NEW).json()["user_id"]
+    client.post("/auth/register", json=NEW)
     code = mailbox.last_code()
     otp = seeded_db.query(EmailOtp).one()
     otp.expires_at -= timedelta(minutes=settings.otp_expire_minutes + 1)
     seeded_db.commit()
-    r = client.post("/auth/verify-otp", json={"user_id": uid, "code": code})
+    r = client.post("/auth/verify-otp", json={"email": NEW["email"], "code": code})
     assert r.status_code == 422 and "expired" in r.json()["error"]["message"]
 
 
 def test_resend_makes_old_code_useless(client, mailbox):
-    uid = client.post("/auth/register", json=NEW).json()["user_id"]
+    client.post("/auth/register", json=NEW)
     old = mailbox.last_code()
-    client.post("/auth/resend-otp", json={"user_id": uid})
+    client.post("/auth/resend-otp", json={"email": NEW["email"]})
     new = mailbox.last_code()
     if old != new:
-        assert client.post("/auth/verify-otp", json={"user_id": uid, "code": old}).status_code == 422
-    assert client.post("/auth/verify-otp", json={"user_id": uid, "code": new}).status_code == 200
+        assert client.post("/auth/verify-otp", json={"email": NEW["email"], "code": old}).status_code == 422
+    assert client.post("/auth/verify-otp", json={"email": NEW["email"], "code": new}).status_code == 200
 
 
 def test_bad_email_format_is_422(client):

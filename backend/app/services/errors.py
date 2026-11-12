@@ -44,3 +44,7 @@ class RateLimitError(DomainError):
 
 class AIUnavailableError(DomainError):
     """a feature that only works with ai, and the ai is down right now"""
+
+
+class EmailFailedError(DomainError):
+    """the mail service didn't take the email"""

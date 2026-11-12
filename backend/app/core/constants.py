@@ -53,6 +53,9 @@ CATEGORY_MIN_PRIORITY = {
     "Discrimination": Priority.CRITICAL,
 }
 
+# private complaints: never suggested to other students and nobody can join them
+SENSITIVE_CATEGORIES = ("Ragging", "Harassment", "Discrimination")
+
 # critical complaints get a meet link (opens a new meet room)
 MANAGER_MEET_LINKS = {
     "GM101": "https://meet.google.com/new",

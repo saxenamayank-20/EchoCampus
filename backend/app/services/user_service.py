@@ -52,7 +52,7 @@ class UserService:
         return student
 
     def login(self, user_id: str, password: str) -> User | None:
-        user = self.users.get_by_user_id(user_id.strip())
+        user = self.users.get_by_user_id(user_id.strip())   # ids are case sensitive: ST101, not st101
         if user and user.is_active and verify_password(password, user.password_hash):
             return user
         return None
@@ -79,7 +79,7 @@ class UserService:
         self.db.commit()
 
     def get(self, user_id: str) -> User | None:
-        return self.users.get_by_user_id(user_id)
+        return self.users.get_by_user_id(user_id.strip())
 
     def list_users(self, role: Role | None = None) -> list[User]:
         return self.users.list_users(role)

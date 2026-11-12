@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, ShieldCheck, Sparkles, Users } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Copy, ShieldCheck, Sparkles, Users } from "lucide-react";
 import { api } from "../api/client";
 import { homeFor, useAuth } from "../auth/AuthContext";
 import { ErrorBox } from "../components/Feedback";
@@ -81,7 +81,9 @@ export function LoginPage() {
   const { user, login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [form, setForm] = useState({ user_id: "", password: "" });
+  const [params] = useSearchParams();
+  // after verifying, the login page opens with the new student id filled in
+  const [form, setForm] = useState({ user_id: params.get("user") ?? "", password: "" });
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
 
@@ -96,7 +98,7 @@ export function LoginPage() {
       navigate(location.state?.from ?? homeFor(u.role), { replace: true });
     } catch (err) {
       if (err.code === "not_verified") {
-        navigate(`/verify?user=${encodeURIComponent(form.user_id.trim())}`);
+        navigate("/verify?unverified=1");
         return;
       }
       setError(err);
@@ -148,8 +150,8 @@ export function RegisterPage() {
     try {
       const { confirm, ...body } = form; // eslint-disable-line no-unused-vars
       const res = await api("/auth/register", { method: "POST", body });
-      toast.success(`Account created. Your student ID is ${res.user_id}`);
-      navigate(`/verify?user=${res.user_id}&new=1`);
+      toast.success("Account created. Check your email for the code.");
+      navigate(`/verify?email=${encodeURIComponent(res.email)}&new=1`);
     } catch (err) {
       setError(err);
     } finally {
@@ -160,7 +162,7 @@ export function RegisterPage() {
   return (
     <AuthCard
       title="Student registration"
-      subtitle="Your student ID is generated for you"
+      subtitle="You get your student ID after verifying your email"
       footer={<>Already registered? <Link to="/login" className="font-medium text-brand-600 dark:text-brand-400">Sign in</Link></>}
     >
       <form onSubmit={submit} className="space-y-4">
@@ -198,21 +200,20 @@ export function RegisterPage() {
 
 export function VerifyOtpPage() {
   const [params] = useSearchParams();
-  const navigate = useNavigate();
   const toast = useToast();
-  const [userId, setUserId] = useState(params.get("user") ?? "");
+  const [email, setEmail] = useState(params.get("email") ?? "");
   const [code, setCode] = useState("");
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [studentId, setStudentId] = useState(null);   // set once the code is right
 
   async function submit(e) {
     e.preventDefault();
     setBusy(true);
     setError(null);
     try {
-      await api("/auth/verify-otp", { method: "POST", body: { user_id: userId.trim(), code } });
-      toast.success("Email verified, you can sign in now.");
-      navigate("/login");
+      const res = await api("/auth/verify-otp", { method: "POST", body: { email: email.trim(), code } });
+      setStudentId(res.user_id);
     } catch (err) {
       setError(err);
     } finally {
@@ -221,24 +222,33 @@ export function VerifyOtpPage() {
   }
 
   async function resend() {
+    setError(null);
     try {
-      await api("/auth/resend-otp", { method: "POST", body: { user_id: userId.trim() } });
+      await api("/auth/resend-otp", { method: "POST", body: { email: email.trim() } });
       toast.info("A new code was sent to your email.");
     } catch (err) {
       setError(err);
     }
   }
 
+  // no auto redirect here: the student reads and saves the id first
+  if (studentId) return <StudentIdSaved studentId={studentId} />;
+
+  const subtitle = params.get("new") ? "We sent a 6 digit code to your email. It can take a minute, check spam too."
+    : params.get("unverified") ? "Your email isn't verified yet. Enter it below and we'll send you a code."
+    : "Enter your email and the 6 digit code we sent you.";
+
   return (
     <AuthCard
       title="Verify your email"
-      subtitle={params.get("new") ? `Save your student ID: ${userId}. We sent a 6 digit code to your email.` : "Enter the 6 digit code from your email."}
+      subtitle={subtitle}
       footer={<Link to="/login" className="font-medium text-brand-600 dark:text-brand-400">Back to sign in</Link>}
     >
       <form onSubmit={submit} className="space-y-4">
         <div>
-          <label className="label" htmlFor="vid">Student ID</label>
-          <input id="vid" className="input" value={userId} onChange={(e) => setUserId(e.target.value)} required />
+          <label className="label" htmlFor="vemail">College email</label>
+          <input id="vemail" type="email" className="input" autoComplete="email" value={email}
+            onChange={(e) => setEmail(e.target.value)} required />
         </div>
         <div>
           <label className="label" htmlFor="code">Code</label>
@@ -247,10 +257,47 @@ export function VerifyOtpPage() {
         </div>
         <ErrorBox error={error} />
         <button className="btn-primary w-full" disabled={busy || code.length !== 6}>{busy ? "Checking…" : "Verify"}</button>
-        <button type="button" onClick={resend} className="w-full text-sm text-brand-600 dark:text-brand-400 hover:underline" disabled={!userId}>
+        <button type="button" onClick={resend} className="w-full text-sm text-brand-600 dark:text-brand-400 hover:underline" disabled={!email.trim()}>
           Send a new code
         </button>
       </form>
+    </AuthCard>
+  );
+}
+
+// shown after verifying: the new student id, big, with a copy button and a login button
+function StudentIdSaved({ studentId }) {
+  const navigate = useNavigate();
+  const toast = useToast();
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(studentId);
+      toast.success("Student ID copied.");
+    } catch {
+      toast.info(`Your student ID is ${studentId}`);
+    }
+  }
+
+  return (
+    <AuthCard title="Email verified" subtitle="Your account is ready.">
+      <div className="space-y-5 text-center">
+        <CheckCircle2 size={40} className="mx-auto text-brand-600 dark:text-brand-400" />
+        <div className="rounded-xl border-2 border-dashed border-brand-400 bg-brand-50 px-4 py-5 dark:bg-brand-400/10">
+          <p className="text-sm text-slate-600 dark:text-slate-300">Your student ID is</p>
+          <p className="mt-1 font-mono text-4xl font-bold tracking-wider">{studentId}</p>
+          <button type="button" onClick={copy} className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-brand-700 hover:underline dark:text-brand-300">
+            <Copy size={14} /> Copy
+          </button>
+        </div>
+        <p className="text-sm text-slate-600 dark:text-slate-400">
+          Please save it. You need this ID and your password every time you sign in.
+          We also sent it to your email.
+        </p>
+        <button className="btn-primary w-full" onClick={() => navigate(`/login?user=${encodeURIComponent(studentId)}`)}>
+          Let&apos;s log in now
+        </button>
+      </div>
     </AuthCard>
   );
 }
